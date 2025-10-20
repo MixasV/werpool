@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+
+env:
+  PNPM_HOME: ~/.pnpm
+  PATH: ~/.pnpm:$PATH
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.17.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run API unit tests
+        run: pnpm --filter api run test
+
+      - name: Install Playwright browsers
+        run: pnpm --filter web exec playwright install --with-deps
+
+      - name: Run web e2e smoke tests
+        run: pnpm --filter web run test:e2e
+
+      - name: Install Flow CLI
+        run: |
+          curl -L https://raw.githubusercontent.com/onflow/flow-cli/master/install.sh | bash
+        shell: bash
+
+      - name: Run Cadence tests
+        run: |
+          export PATH="$HOME/.flow/bin:$PATH"
+          flow version
+          flow test
+        shell: bash
+
+      - name: Validate Docker Compose manifest
+        run: docker compose -f docker-compose.yml config
+
+      - name: Run Flow market lifecycle scenario
+        run: |
+          export PATH="$HOME/.flow/bin:$PATH"
+          pnpm cadence:scenario
+        shell: bash

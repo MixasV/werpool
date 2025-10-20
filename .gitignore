@@ -1,0 +1,83 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.npm
+.yarn
+.yarn-integrity
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+.turbo/
+
+# Environment variables
+.env
+.env.local
+.env.production.local
+.env.development.local
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+.cursor/
+.cursorignore
+*.swp
+*.swo
+*~
+
+# Private keys
+*.pkey
+*.key
+*.pem
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Documentation (exclude all .md except README.md)
+*.md
+!README.md
+
+# Docker volumes
+postgres_data/
+redis_data/
+
+# MacOS
+.AppleDouble
+.LSOverride
+
+# Windows
+ehthumbs.db
+ehthumbs_vista.db
+
+# Linux
+*~
+.directory
+.Trash-*
+
+# Factory artifacts
+.factory/

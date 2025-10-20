@@ -1,0 +1,19 @@
+{
+  "name": "forte-hacks-platform",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.12.3",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+  "cadence:test": "flow test contracts/cadence/tests/core_market_hub_test.cdc",
+  "cadence:scenario": "bash ./scripts/flow/run-market-scenario.sh",
+  "flow:deploy:testnet": "bash ./scripts/flow/deploy-testnet.sh"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^20.11.30",
+    "turbo": "^2.1.0"
+  }
+}

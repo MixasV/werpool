@@ -1,0 +1,158 @@
+{
+	"contracts": {
+		"Burner": {
+			"source": "./contracts/cadence/deps/TestBurner.cdc",
+			"aliases": {
+				"emulator": "f8d6e0586b0a20c7",
+				"testing": "f8d6e0586b0a20c7",
+				"testnet": "3ea7ac2bcdd8bcef"
+			}
+		},
+		"CoreMarketHub": {
+			"source": "./contracts/cadence/CoreMarketHub.cdc",
+			"aliases": {
+				"emulator": "0000000000000001",
+				"testing": "0000000000000001",
+				"testnet": "3ea7ac2bcdd8bcef"
+			}
+		},
+		"FlowToken": {
+			"source": "./contracts/cadence/deps/TestFlowToken.cdc",
+			"aliases": {
+				"emulator": "f8d6e0586b0a20c7",
+				"testing": "f8d6e0586b0a20c7",
+				"testnet": "7e60df042a9c0868"
+			}
+		},
+		"FungibleToken": {
+			"source": "./contracts/cadence/deps/TestFungibleToken.cdc",
+			"aliases": {
+				"emulator": "f8d6e0586b0a20c7",
+				"testing": "f8d6e0586b0a20c7",
+				"testnet": "9a0766d93b6608b7"
+			}
+		},
+		"LMSRAmm": {
+			"source": "./contracts/cadence/LMSRAmm.cdc",
+			"aliases": {
+				"emulator": "0000000000000001",
+				"testing": "0000000000000001",
+				"testnet": "3ea7ac2bcdd8bcef"
+			}
+		},
+		"OutcomeToken": {
+			"source": "./contracts/cadence/outcome/OutcomeToken.cdc",
+			"aliases": {
+				"emulator": "0000000000000001",
+				"testing": "0000000000000001",
+				"testnet": "3ea7ac2bcdd8bcef"
+			}
+		},
+		"ViewResolver": {
+			"source": "./contracts/cadence/deps/TestViewResolver.cdc",
+			"aliases": {
+				"emulator": "f8d6e0586b0a20c7",
+				"testing": "f8d6e0586b0a20c7",
+				"testnet": "3ea7ac2bcdd8bcef"
+			}
+		}
+	},
+	"networks": {
+		"emulator": "127.0.0.1:3569",
+		"testing": "127.0.0.1:3569",
+		"testnet": "access.devnet.nodes.onflow.org:9000"
+	},
+	"accounts": {
+		"testnet-operator": {
+			"address": "f0dfdd89d285f9d8",
+			"key": {
+				"type": "file",
+				"location": "testnet-operator.pkey"
+			}
+		},
+		"emulator-account": {
+			"address": "f8d6e0586b0a20c7",
+			"key": {
+				"type": "hex",
+				"signatureAlgorithm": "ECDSA_secp256k1",
+				"hashAlgorithm": "SHA2_256",
+				"privateKey": "0f8ed3c2207b1bc45b0f0fda9e35bd2f3e466b1adefbbb3d1b3cd8d8a7d60a75"
+			}
+		},
+		"testnet-deployer": {
+			"address": "3ea7ac2bcdd8bcef",
+			"key": {
+				"type": "hex",
+				"signatureAlgorithm": "ECDSA_secp256k1",
+				"hashAlgorithm": "SHA2_256",
+				"privateKey": "45dde5b6b9185cb242030b75bdb848952c89b46199de203fe0e2d82a15f8381e"
+			}
+		}
+	},
+	"deployments": {
+		"emulator": {
+			"emulator-account": [
+				"FungibleToken",
+				"ViewResolver",
+				"Burner",
+				"FlowToken",
+				"OutcomeToken",
+				"LMSRAmm",
+				"CoreMarketHub"
+			]
+		},
+		"testing": {
+			"emulator-account": [
+				"FungibleToken",
+				"ViewResolver",
+				"Burner",
+				"FlowToken",
+				"OutcomeToken",
+				"LMSRAmm",
+				"CoreMarketHub"
+			]
+		},
+		"testnet": {
+			"testnet-deployer": [
+				"ViewResolver",
+				"Burner",
+				"OutcomeToken",
+				"LMSRAmm",
+				"CoreMarketHub"
+			]
+		}
+	},
+	"transactions": {
+		"activateMarket": "./contracts/cadence/transactions/activateMarket.cdc",
+		"burnOutcome": "./contracts/cadence/transactions/burnOutcome.cdc",
+		"clearPatrolSignal": "./contracts/cadence/transactions/clearPatrolSignal.cdc",
+		"closeMarket": "./contracts/cadence/transactions/closeMarket.cdc",
+		"createMarket": "./contracts/cadence/transactions/createMarket.cdc",
+		"createMarketPool": "./contracts/cadence/transactions/createMarketPool.cdc",
+		"executeTrade": "./contracts/cadence/transactions/executeTrade.cdc",
+		"grantRole": "./contracts/cadence/transactions/grantRole.cdc",
+		"mintOutcome": "./contracts/cadence/transactions/mintOutcome.cdc",
+		"overrideSettlement": "./contracts/cadence/transactions/overrideSettlement.cdc",
+		"recordPatrolSignal": "./contracts/cadence/transactions/recordPatrolSignal.cdc",
+		"revokeRole": "./contracts/cadence/transactions/revokeRole.cdc",
+		"settleMarket": "./contracts/cadence/transactions/settleMarket.cdc",
+		"setupRoleStorage": "./contracts/cadence/transactions/setupRoleStorage.cdc",
+		"suspendMarket": "./contracts/cadence/transactions/suspendMarket.cdc",
+		"syncMarketState": "./contracts/cadence/transactions/syncMarketState.cdc",
+		"updateMarketSchedule": "./contracts/cadence/transactions/updateMarketSchedule.cdc",
+		"updatePatrolThreshold": "./contracts/cadence/transactions/updatePatrolThreshold.cdc",
+		"voidMarket": "./contracts/cadence/transactions/voidMarket.cdc"
+	},
+	"scripts": {
+		"canReceiveRoles": "./contracts/cadence/scripts/canReceiveRoles.cdc",
+		"getAccountBalances": "./contracts/cadence/scripts/getAccountBalances.cdc",
+		"getMarketIdBySlug": "./contracts/cadence/scripts/getMarketIdBySlug.cdc",
+		"getMarketStorage": "./contracts/cadence/scripts/getMarketStorage.cdc",
+		"getPoolState": "./contracts/cadence/scripts/getPoolState.cdc",
+		"rolesOf": "./contracts/cadence/scripts/rolesOf.cdc",
+		"aiSportsGetUserFantasyScore": "./contracts/cadence/scripts/aisports/getUserFantasyScore.cdc",
+		"aiSportsGetJuiceBalance": "./contracts/cadence/scripts/aisports/getJuiceBalance.cdc",
+		"aiSportsGetTournamentStats": "./contracts/cadence/scripts/aisports/getTournamentStats.cdc",
+		"aiSportsGetUserNFTs": "./contracts/cadence/scripts/aisports/getUserNFTs.cdc"
+	}
+}

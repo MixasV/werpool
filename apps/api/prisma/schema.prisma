@@ -1,0 +1,445 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MarketState {
+  DRAFT
+  LIVE
+  SUSPENDED
+  CLOSED
+  SETTLED
+  VOIDED
+}
+
+enum MarketCategory {
+  CRYPTO
+  SPORTS
+  ESPORTS
+  CUSTOM
+}
+
+enum OutcomeStatus {
+  ACTIVE
+  SUSPENDED
+  SETTLED
+}
+
+enum WorkflowActionType {
+  OPEN
+  SUSPEND
+  SETTLE
+  VOID
+  DISTRIBUTE
+  CUSTOM
+}
+
+enum WorkflowActionStatus {
+  PENDING
+  SCHEDULED
+  EXECUTED
+  FAILED
+}
+
+enum RoleType {
+  ADMIN
+  OPERATOR
+  ORACLE
+  PATROL
+}
+
+enum PatrolSignalSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum FlowTransactionType {
+  CREATE_MARKET
+  CREATE_POOL
+  MINT_OUTCOME
+  BURN_OUTCOME
+  SYNC_POOL
+  ACTIVATE
+  SUSPEND
+  CLOSE
+  VOID
+  UPDATE_SCHEDULE
+  UPDATE_PATROL_THRESHOLD
+  RECORD_PATROL_SIGNAL
+  CLEAR_PATROL_SIGNAL
+  SETTLE
+  OVERRIDE_SETTLEMENT
+  EXECUTE_TRADE
+  CLAIM_REWARDS
+}
+
+enum FlowTransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum SchedulerTaskType {
+  MARKET_OPEN
+  MARKET_LOCK
+  MARKET_CLOSE
+  MARKET_SETTLE
+  PATROL_SCAN
+  LEADERBOARD_SNAPSHOT
+  CUSTOM
+}
+
+enum SchedulerTaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum PointEventSource {
+  TRADE
+  LIQUIDITY
+  CLAIM
+  PATROL
+  BONUS
+  ADMIN
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  PRIVATE
+  NETWORK
+}
+
+enum TradeHistoryVisibility {
+  PRIVATE
+  NETWORK
+  PUBLIC
+}
+
+enum OracleFeedType {
+  CRYPTO
+  SPORTS
+  TOPSHOT
+}
+
+enum MarketAnalyticsInterval {
+  HOUR
+  DAY
+}
+
+model Market {
+  id          String           @id @default(uuid())
+  slug        String           @unique
+  title       String
+  description String
+  state       MarketState      @default(DRAFT)
+  createdAt   DateTime         @default(now())
+  closeAt     DateTime?
+  category    MarketCategory   @default(CRYPTO)
+  tags        String[]         @default([])
+  oracleId    String?
+  patrolThreshold Decimal      @db.Decimal(18, 8) @default(0)
+  scheduledStartAt     DateTime?
+  tradingLockAt        DateTime?
+  freezeWindowStartAt  DateTime?
+  freezeWindowEndAt    DateTime?
+
+  liquidityPool LiquidityPool?
+  poolState     MarketPoolState?
+  outcomes      Outcome[]
+  workflow      WorkflowAction[]
+  settlement    Settlement?
+  transactions  MarketTransactionLog[]
+  trades        MarketTrade[]
+  analytics     MarketAnalyticsSnapshot[]
+  patrolSignals PatrolSignal[]
+  schedulerTasks SchedulerTask[]
+}
+
+model LiquidityPool {
+  id             String  @id @default(uuid())
+  marketId       String  @unique
+  tokenSymbol    String
+  totalLiquidity Decimal @db.Decimal(18, 4)
+  feeBps         Int
+  providerCount  Int
+
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+}
+
+model MarketPoolState {
+  marketId           String @id
+  flowMarketId       Int    @unique
+  liquidityParameter Decimal @db.Decimal(18, 8)
+  totalLiquidity     Decimal @db.Decimal(18, 8)
+  bVector            Json
+  outcomeSupply      Json
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([marketId])
+}
+
+model Outcome {
+  id                 String        @id @default(uuid())
+  marketId           String
+  label              String
+  status             OutcomeStatus @default(ACTIVE)
+  impliedProbability Decimal       @db.Decimal(5, 4)
+  liquidity          Decimal       @db.Decimal(18, 4)
+  metadata           Json?
+
+  market     Market      @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  settlement Settlement? @relation("SettlementOutcome")
+}
+
+model WorkflowAction {
+  id          String                @id @default(uuid())
+  marketId    String
+  type        WorkflowActionType
+  status      WorkflowActionStatus @default(PENDING)
+  description String
+  triggersAt  DateTime?
+  metadata    Json?
+
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+}
+
+model Settlement {
+  id                String   @id @default(uuid())
+  marketId          String   @unique
+  resolvedOutcomeId String   @unique
+  txId              String   @unique
+  settledAt         DateTime
+  notes             String?
+  overrideReason    String?
+
+  market          Market  @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  resolvedOutcome Outcome @relation("SettlementOutcome", fields: [resolvedOutcomeId], references: [id], onDelete: Cascade)
+}
+
+model FlowUser {
+  address        String         @id
+  label          String?
+  bio            String?        @db.VarChar(512)
+  avatarUrl      String?
+  email          String?        @unique
+  emailVerifiedAt DateTime?
+  emailVerificationToken String? @unique
+  emailVerificationExpiresAt DateTime?
+  marketingOptIn Boolean        @default(false)
+  profileVisibility        ProfileVisibility       @default(PUBLIC)
+  tradeHistoryVisibility   TradeHistoryVisibility  @default(PRIVATE)
+  nonce          String?
+  nonceExpiresAt DateTime?
+  firstSeenAt    DateTime       @default(now())
+  lastSeenAt     DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  sessions FlowSession[]
+  roles    RoleAssignment[]
+  oracleSnapshots OracleSnapshot[]
+  schedulerTasks  SchedulerTask[] @relation("SchedulerTaskCreator")
+  pointLedger     UserPointLedger[]
+  createdPointLedgerEntries UserPointLedger[] @relation("UserPointLedgerCreator")
+  leaderboardPlacements LeaderboardSnapshot[]
+  pointsSummary   UserPoints?
+}
+
+model FlowSession {
+  id               String    @id @default(uuid())
+  flowUserAddress  String
+  tokenHash        String    @unique
+  expiresAt        DateTime
+  createdAt        DateTime  @default(now())
+
+  flowUser FlowUser @relation(fields: [flowUserAddress], references: [address], onDelete: Cascade)
+
+  @@index([flowUserAddress])
+}
+
+model RoleAssignment {
+  id        String    @id @default(uuid())
+  address   String
+  role      RoleType
+  createdAt DateTime  @default(now())
+
+  flowUser FlowUser? @relation(fields: [address], references: [address])
+
+  @@unique([address, role])
+}
+
+model OracleSnapshot {
+  id             String          @id @default(uuid())
+  type           OracleFeedType
+  source         String
+  assetSymbol    String?
+  eventId        String?
+  payload        Json
+  signature      String
+  publishedBy    String?
+  createdAt      DateTime        @default(now())
+
+  publisher FlowUser? @relation(fields: [publishedBy], references: [address], onDelete: SetNull)
+
+  @@index([type, createdAt])
+  @@index([source])
+  @@index([assetSymbol])
+}
+
+model PatrolSignal {
+  id        String                @id @default(uuid())
+  marketId  String
+  issuer    String
+  severity  PatrolSignalSeverity
+  code      String
+  weight    Decimal               @db.Decimal(18, 8)
+  createdAt DateTime              @default(now())
+  expiresAt DateTime?
+  notes     String?
+
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([marketId])
+  @@unique([marketId, issuer])
+}
+
+model SchedulerTask {
+  id            String               @id @default(uuid())
+  marketId      String?
+  type          SchedulerTaskType
+  status        SchedulerTaskStatus  @default(PENDING)
+  scheduledFor  DateTime
+  payload       Json?
+  description   String?              @db.VarChar(512)
+  attempts      Int                  @default(0)
+  lastError     String?
+  lastAttemptAt DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  createdBy     String?
+
+  market   Market?   @relation(fields: [marketId], references: [id], onDelete: SetNull)
+  creator  FlowUser? @relation("SchedulerTaskCreator", fields: [createdBy], references: [address], onDelete: SetNull)
+
+  @@index([status, scheduledFor])
+  @@index([marketId])
+}
+
+model UserPointLedger {
+  id         String           @id @default(uuid())
+  address    String
+  source     PointEventSource
+  amount     Decimal          @db.Decimal(18, 4)
+  reference  String?
+  notes      String?
+  createdAt  DateTime         @default(now())
+  createdBy  String?
+
+  user FlowUser? @relation(fields: [address], references: [address], onDelete: SetNull)
+  creator FlowUser? @relation("UserPointLedgerCreator", fields: [createdBy], references: [address], onDelete: SetNull)
+
+  @@index([address, createdAt])
+  @@index([source])
+  @@index([reference])
+}
+
+model UserPoints {
+  address   String   @id
+  total     Decimal  @db.Decimal(18, 4) @default(0)
+  updatedAt DateTime @updatedAt
+
+  user FlowUser @relation(fields: [address], references: [address], onDelete: Cascade)
+}
+
+model LeaderboardSnapshot {
+  id         String   @id @default(uuid())
+  capturedAt DateTime @default(now())
+  address    String
+  rank       Int
+  total      Decimal  @db.Decimal(18, 4)
+  createdAt  DateTime @default(now())
+
+  user FlowUser? @relation(fields: [address], references: [address], onDelete: SetNull)
+
+  @@index([capturedAt])
+  @@index([address])
+  @@index([rank])
+}
+
+model MarketTransactionLog {
+  id             String                 @id @default(uuid())
+  marketId       String
+  transactionId  String                 @unique
+  type           FlowTransactionType
+  status         FlowTransactionStatus  @default(SUCCESS)
+  signer         String
+  network        String
+  payload        Json?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([marketId])
+}
+
+model MarketTrade {
+  id             String    @id @default(uuid())
+  marketId       String
+  outcomeId      String?
+  outcomeLabel   String
+  outcomeIndex   Int
+  shares         Decimal   @db.Decimal(18, 8)
+  flowAmount     Decimal   @db.Decimal(18, 8)
+  isBuy          Boolean
+  probabilities  Json
+  maxFlowAmount  Decimal?  @db.Decimal(18, 8)
+  transactionId  String    @unique
+  signer         String
+  network        String
+  createdAt      DateTime  @default(now())
+
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([marketId])
+  @@index([marketId, createdAt])
+}
+
+model MarketAnalyticsSnapshot {
+  id            String                  @id @default(uuid())
+  marketId      String
+  outcomeId     String?
+  outcomeIndex  Int
+  outcomeLabel  String
+  interval      MarketAnalyticsInterval
+  bucketStart   DateTime
+  bucketEnd     DateTime
+  openPrice     Decimal                 @db.Decimal(18, 8)
+  closePrice    Decimal                 @db.Decimal(18, 8)
+  highPrice     Decimal                 @db.Decimal(18, 8)
+  lowPrice      Decimal                 @db.Decimal(18, 8)
+  averagePrice  Decimal                 @db.Decimal(18, 8)
+  volumeShares  Decimal                 @db.Decimal(18, 8)
+  volumeFlow    Decimal                 @db.Decimal(18, 8)
+  netFlow       Decimal                 @db.Decimal(18, 8)
+  tradeCount    Int
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([marketId, interval, bucketStart])
+  @@unique([marketId, outcomeIndex, interval, bucketStart])
+}
