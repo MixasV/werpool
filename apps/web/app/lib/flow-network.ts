@@ -28,7 +28,7 @@ const NETWORK_PRESETS: Record<FlowNetworkId, FlowNetworkPreset> = {
     accessNode: "https://rest-testnet.onflow.org",
     discoveryWallet: "https://fcl-discovery.onflow.org/testnet/authn",
     discoveryAuthn: "https://fcl-discovery.onflow.org/testnet/authn",
-    walletMethod: "POPUP",
+    walletMethod: "POP/RPC",
     contracts: {
       coreMarketHub: "0x3ea7ac2bcdd8bcef",
       lmsrAmm: "0x3ea7ac2bcdd8bcef",
@@ -39,7 +39,7 @@ const NETWORK_PRESETS: Record<FlowNetworkId, FlowNetworkPreset> = {
     accessNode: "https://rest-mainnet.onflow.org",
     discoveryWallet: "https://fcl-discovery.onflow.org/authn",
     discoveryAuthn: "https://fcl-discovery.onflow.org/authn",
-    walletMethod: "POPUP",
+    walletMethod: "POP/RPC",
     contracts: {
       coreMarketHub: "0x0000000000000000",
       lmsrAmm: "0x0000000000000000",
