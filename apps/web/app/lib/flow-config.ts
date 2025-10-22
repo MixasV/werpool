@@ -36,6 +36,12 @@ export const initFlowConfig = (): void => {
   if (walletMethod) {
     config.put("discovery.wallet.method", walletMethod);
   }
+  
+  // Add WalletConnect support (optional but recommended)
+  const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+  if (walletConnectProjectId) {
+    config.put("walletconnect.projectId", walletConnectProjectId);
+  }
 
   configured = true;
 };

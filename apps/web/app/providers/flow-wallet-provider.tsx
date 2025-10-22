@@ -169,7 +169,8 @@ export const FlowWalletProvider = ({ children }: { children: ReactNode }) => {
 
   const logIn = useCallback(async () => {
     setAuthMode("wallet");
-    await fcl.logIn();
+    // Use fcl.authenticate() instead of fcl.logIn() for better compatibility
+    await fcl.authenticate();
   }, []);
 
   const resetSession = useCallback(() => {
