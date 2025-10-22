@@ -1,11 +1,12 @@
 import { randomUUID } from "crypto";
 import * as path from "path";
 
-import { Injectable } from "@nestjs/common";
+import { Injectable, Inject } from "@nestjs/common";
 
 import { AiSportsFlowService } from "../../flow/aisports-flow.service";
 import { LmsrService } from "../../markets/lmsr/lmsr.service";
 import { LmsrState } from "../../markets/lmsr/lmsr.types";
+import { AiSportsTransactionProvider } from "../../aisports/transaction/transaction-provider.interface";
 import {
   AiSportsMarketCategory,
   AiSportsMarketType,
@@ -42,7 +43,9 @@ export class MetaPredictionService {
 
   constructor(
     private readonly flowService: AiSportsFlowService,
-    private readonly lmsr: LmsrService
+    private readonly lmsr: LmsrService,
+    @Inject('AISPORTS_TX_PROVIDER')
+    private readonly txProvider: AiSportsTransactionProvider
   ) {
     const storagePath = process.env.AISPORTS_META_STORE_PATH?.trim();
     const resolvedPath =
@@ -81,8 +84,8 @@ export class MetaPredictionService {
 
     const market = this.buildMarket({
       id,
-      title: `Средний fantasy score превысит ${targetScore}?`,
-      description: `Текущее значение: ${stats.averageScore.toFixed(1)}. Данные предоставлены aiSports Escrow`,
+      title: `Will the average fantasy score exceed ${targetScore}?`,
+      description: `Current value: ${stats.averageScore.toFixed(1)}. Data provided by aiSports Escrow`,
       category: "aiSports_Meta",
       type: "yes_no",
       oracle: {
@@ -116,8 +119,8 @@ export class MetaPredictionService {
 
     const market = this.buildMarket({
       id: `aisports:user:${username}:${Date.now()}`,
-      title: `@${username} попадёт в топ-${targetPercent}% за ${timeframe === "daily" ? "день" : "неделю"}?`,
-      description: `Текущий fantasy score: ${user.fantasyScore.toFixed(1)}. Данные aiSports leaderboard`,
+      title: `Will @${username} reach the top ${targetPercent}% within the ${timeframe === "daily" ? "day" : "week"}?`,
+      description: `Current fantasy score: ${user.fantasyScore.toFixed(1)}. Source: aiSports leaderboard`,
       category: "aiSports_User_Performance",
       type: "yes_no",
       oracle: {
@@ -142,8 +145,8 @@ export class MetaPredictionService {
     await this.ensureLoaded();
     const market = this.buildMarket({
       id: `aisports:nft-performance:${Date.now()}`,
-      title: "Редкие aiSports NFT дадут преимущество сегодня?",
-      description: "Сравнение средних fantasy очков владельцев Epic/Legendary против остальных",
+      title: "Will rare aiSports NFTs provide an advantage today?",
+      description: "Comparing average fantasy score of Epic/Legendary holders versus others",
       category: "aiSports_NFT",
       type: "yes_no",
       oracle: {
@@ -170,9 +173,9 @@ export class MetaPredictionService {
     await this.ensureLoaded();
     const stats = await this.safeTournamentStats();
     const metricLabel: Record<typeof metric, string> = {
-      participants: "Количество участников",
-      prize_pool: "Призовой фонд",
-      juice_distribution: "Распределение $JUICE",
+      participants: "Total participants",
+      prize_pool: "Prize pool size",
+      juice_distribution: "$JUICE distribution",
     } as const;
 
     const currentValue =
@@ -184,8 +187,8 @@ export class MetaPredictionService {
 
     const market = this.buildMarket({
       id: `aisports:community:${metric}:${Date.now()}`,
-      title: `${metricLabel[metric]} превысит ${targetValue}?`,
-      description: `Текущее значение: ${currentValue}. Обновление каждые 24 часа`,
+      title: `Will ${metricLabel[metric]} exceed ${targetValue}?`,
+      description: `Current value: ${currentValue}. Updated every 24 hours`,
       category: "aiSports_Community",
       type: "yes_no",
       oracle: {
@@ -325,6 +328,18 @@ export class MetaPredictionService {
       lastTradeAt: now,
     };
 
+    let txResult;
+    try {
+      txResult = await this.txProvider.betWithJuice({
+        marketId,
+        outcome,
+        amount: quote.flowAmount,
+        signer: signer || 'anonymous',
+      });
+    } catch (error) {
+      throw new Error(`Transaction failed: ${(error as Error).message}`);
+    }
+
     const trade: MetaMarketTrade = {
       id: randomUUID(),
       marketId,
@@ -336,6 +351,8 @@ export class MetaPredictionService {
       signer: signer ?? null,
       createdAt: now,
       probabilities: [...quote.probabilities],
+      txId: txResult.txId,
+      txStatus: txResult.status,
     };
 
     const trades = [...record.trades, trade];
@@ -348,6 +365,12 @@ export class MetaPredictionService {
       market: this.cloneMarket(updatedMarket),
       quote: { ...quote, poolState: this.clonePoolState(quote.poolState) },
       trade,
+      txResult: {
+        txId: txResult.txId,
+        status: txResult.status,
+        timestamp: txResult.timestamp,
+        blockHeight: txResult.blockHeight,
+      },
     };
   }
 
@@ -387,7 +410,7 @@ export class MetaPredictionService {
       return entries;
     }
 
-    // fallback when нет данных по сделкам
+    // Fallback when no trades are available yet
     return this.getSyntheticLeaderboard(normalizedLimit);
   }
 

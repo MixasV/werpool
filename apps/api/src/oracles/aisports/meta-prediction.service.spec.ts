@@ -35,7 +35,18 @@ const createFlowService = (): AiSportsFlowService => {
 const createService = () => {
   const flowService = createFlowService();
   const lmsr = new LmsrService();
-  return new MetaPredictionService(flowService, lmsr);
+  const mockTxProvider = {
+    betWithJuice: jest.fn().mockResolvedValue({
+      txId: '0xmocktx',
+      status: 'sealed' as const,
+      timestamp: new Date(),
+      blockHeight: 1000000,
+    }),
+    isAvailable: () => true,
+    getMode: () => 'mock' as const,
+  };
+  type AiSportsProvider = Parameters<typeof MetaPredictionService.prototype.constructor>[2];
+  return new MetaPredictionService(flowService, lmsr, mockTxProvider as unknown as AiSportsProvider);
 };
 
 describe("MetaPredictionService", () => {

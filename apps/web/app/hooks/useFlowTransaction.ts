@@ -65,13 +65,13 @@ export const useFlowTransaction = (): UseFlowTransactionResult => {
 
       // Subscribe to transaction status updates
       const unsub = fcl.tx(txId).subscribe((txStatus: any) => {
-        if (txStatus.status === fcl.tx.PENDING) {
+        if (fcl.tx.isPending(txStatus)) {
           setState((prev) => ({ ...prev, status: 'pending' }));
-        } else if (txStatus.status === fcl.tx.FINALIZED) {
+        } else if (fcl.tx.isFinalized(txStatus)) {
           setState((prev) => ({ ...prev, status: 'finalized' }));
-        } else if (txStatus.status === fcl.tx.EXECUTED) {
+        } else if (fcl.tx.isExecuted(txStatus)) {
           setState((prev) => ({ ...prev, status: 'executed' }));
-        } else if (txStatus.status === fcl.tx.SEALED) {
+        } else if (fcl.tx.isSealed(txStatus)) {
           setState((prev) => ({
             ...prev,
             status: 'sealed',

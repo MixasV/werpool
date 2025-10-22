@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   ServiceUnavailableException,
@@ -12,6 +13,7 @@ import {
 } from "./dto/crypto-quote.dto";
 import { PublishCryptoQuoteRequestDto } from "./dto/publish-crypto.dto";
 import { signOraclePayload } from "./signing.util";
+import { serializeJson } from "../common/prisma-json.util";
 
 type PublishParams = PublishCryptoQuoteRequestDto & {
   publishedBy?: string | null;
@@ -26,33 +28,28 @@ interface SourceQuote {
 @Injectable()
 export class CryptoOracleService {
   private readonly logger = new Logger(CryptoOracleService.name);
-  private readonly signingKey = process.env.ORACLE_SIGNING_KEY ?? "dev-secret";
+  private readonly signingKey: string;
   private readonly defaultSources: Array<"coingecko" | "binance"> = [
     "coingecko",
     "binance",
   ];
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    this.signingKey = this.resolveSigningKey();
+  }
 
   async publishQuote(params: PublishParams): Promise<CryptoQuoteDto> {
     const assetSymbol = this.normalizeSymbol(params.assetSymbol);
-    const requestedSources = Array.isArray(params.sources) && params.sources.length > 0
-      ? params.sources
-      : this.defaultSources;
+    const requestedSources =
+      Array.isArray(params.sources) && params.sources.length > 0
+        ? params.sources
+        : this.defaultSources;
 
-    const collected: SourceQuote[] = [];
-    for (const source of requestedSources) {
-      try {
-        const quote = await this.fetchSourcePrice(source, assetSymbol);
-        if (quote) {
-          collected.push(quote);
-        }
-      } catch (error) {
-        this.logger.warn(
-          `Не удалось получить котировку ${assetSymbol} из ${source}: ${(error as Error).message}`
-        );
-      }
-    }
+    const validSources = requestedSources.filter(
+      (s): s is "coingecko" | "binance" => s === "coingecko" || s === "binance"
+    );
+
+    const collected = await this.collectSourceQuotes(assetSymbol, validSources);
 
     if (params.priceOverride !== undefined && Number.isFinite(params.priceOverride)) {
       collected.unshift({
@@ -75,36 +72,20 @@ export class CryptoOracleService {
 
     if (collected.length === 0) {
       throw new ServiceUnavailableException(
-        `Нет доступных котировок для ${assetSymbol}; проверьте источники или укажите priceOverride`
+        `No quotes available for ${assetSymbol}; check sources or provide priceOverride`
       );
     }
 
-    const aggregatedPrice =
-      collected.reduce((sum, entry) => sum + entry.priceUsd, 0) / collected.length;
+    const aggregatedPrice = this.computeAveragePrice(collected);
 
-    const timestamp = new Date().toISOString();
-    const payload = {
-      type: "crypto.quote",
+    return this.persistSnapshot({
       assetSymbol,
       priceUsd: aggregatedPrice,
-      timestamp,
+      observedAt: new Date(),
       sources: collected,
-    };
-
-    const signature = signOraclePayload(payload, this.signingKey);
-
-    const snapshot = await this.prisma.oracleSnapshot.create({
-      data: {
-        type: "CRYPTO",
-        source: "aggregated",
-        assetSymbol,
-        payload,
-        signature,
-        publishedBy: params.publishedBy ?? null,
-      },
+      sourceTag: "aggregated",
+      publishedBy: params.publishedBy ?? null,
     });
-
-    return this.toDto(snapshot);
   }
 
   async getLatestQuote(assetSymbol: string): Promise<CryptoQuoteDto | null> {
@@ -133,6 +114,79 @@ export class CryptoOracleService {
     });
 
     return snapshots.map((snapshot) => this.toDto(snapshot));
+  }
+
+  async getAggregatedPrice(
+    assetSymbol: string,
+    options: {
+      sources?: Array<"coingecko" | "binance">;
+      allowFallback?: boolean;
+    } = {}
+  ): Promise<{ priceUsd: number; sources: SourceQuote[] }> {
+    const normalized = this.normalizeSymbol(assetSymbol);
+    const requestedSources =
+      options.sources && options.sources.length > 0 ? options.sources : this.defaultSources;
+
+    const collected = await this.collectSourceQuotes(normalized, requestedSources);
+
+    if (collected.length === 0) {
+      if (options.allowFallback) {
+        const fallback = this.getFallbackPrice(normalized);
+        if (fallback !== null) {
+          const observedAt = new Date().toISOString();
+          return {
+            priceUsd: fallback,
+            sources: [
+              {
+                source: "fallback",
+                priceUsd: fallback,
+                observedAt,
+              },
+            ],
+          };
+        }
+      }
+      throw new ServiceUnavailableException(`No price data for ${normalized}`);
+    }
+
+    return {
+      priceUsd: this.computeAveragePrice(collected),
+      sources: collected,
+    };
+  }
+
+  async publishComputedQuote(params: {
+    assetSymbol: string;
+    priceUsd: number;
+    observedAt?: Date;
+    sourceTag?: string;
+    metadata?: Record<string, unknown>;
+    publishedBy?: string | null;
+  }): Promise<CryptoQuoteDto> {
+    const assetSymbol = this.normalizeSymbol(params.assetSymbol);
+    const observedAt = params.observedAt ?? new Date();
+    const price = Number(params.priceUsd);
+    if (!Number.isFinite(price) || price <= 0) {
+      throw new BadRequestException("priceUsd must be a positive number");
+    }
+
+    const sources: SourceQuote[] = [
+      {
+        source: params.sourceTag ?? "automation",
+        priceUsd: price,
+        observedAt: observedAt.toISOString(),
+      },
+    ];
+
+    return this.persistSnapshot({
+      assetSymbol,
+      priceUsd: price,
+      observedAt,
+      sources,
+      sourceTag: params.sourceTag ?? "automation",
+      metadata: params.metadata,
+      publishedBy: params.publishedBy ?? null,
+    });
   }
 
   private async fetchSourcePrice(
@@ -174,9 +228,9 @@ export class CryptoOracleService {
       const value = payload[coinId]?.usd;
       return typeof value === "number" ? value : null;
     } catch (error) {
-      this.logger.warn(
-        `CoinGecko вернул ошибку для ${assetSymbol}: ${(error as Error).message}`
-      );
+        this.logger.warn(
+          `CoinGecko returned an error for ${assetSymbol}: ${(error as Error).message}`
+        );
       return null;
     }
   }
@@ -194,11 +248,75 @@ export class CryptoOracleService {
       const price = payload.price ? Number(payload.price) : null;
       return price && Number.isFinite(price) ? price : null;
     } catch (error) {
-      this.logger.warn(
-        `Binance вернул ошибку для ${assetSymbol}: ${(error as Error).message}`
-      );
+        this.logger.warn(
+          `Binance returned an error for ${assetSymbol}: ${(error as Error).message}`
+        );
       return null;
     }
+  }
+
+  private async collectSourceQuotes(
+    assetSymbol: string,
+    requestedSources: Array<"coingecko" | "binance">
+  ): Promise<SourceQuote[]> {
+    const collected: SourceQuote[] = [];
+
+    for (const source of requestedSources) {
+      try {
+        const quote = await this.fetchSourcePrice(source, assetSymbol);
+        if (quote) {
+          collected.push(quote);
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Failed to fetch quote for ${assetSymbol} from ${source}: ${(error as Error).message}`
+        );
+      }
+    }
+
+    return collected;
+  }
+
+  private computeAveragePrice(collected: SourceQuote[]): number {
+    if (collected.length === 0) {
+      throw new BadRequestException("Cannot compute average price from an empty set of quotes");
+    }
+    const sum = collected.reduce((acc, current) => acc + current.priceUsd, 0);
+    return sum / collected.length;
+  }
+
+  private async persistSnapshot(params: {
+    assetSymbol: string;
+    priceUsd: number;
+    observedAt: Date;
+    sources: SourceQuote[];
+    sourceTag: string;
+    metadata?: Record<string, unknown>;
+    publishedBy?: string | null;
+  }): Promise<CryptoQuoteDto> {
+    const payload = serializeJson({
+      type: "crypto.quote",
+      assetSymbol: params.assetSymbol,
+      priceUsd: params.priceUsd,
+      timestamp: params.observedAt.toISOString(),
+      sources: params.sources,
+      metadata: params.metadata ?? undefined,
+    });
+
+    const signature = signOraclePayload(payload, this.signingKey);
+
+    const snapshot = await this.prisma.oracleSnapshot.create({
+      data: {
+        type: "CRYPTO",
+        source: params.sourceTag,
+        assetSymbol: params.assetSymbol,
+        payload,
+        signature,
+        publishedBy: params.publishedBy ?? null,
+      },
+    });
+
+    return this.toDto(snapshot);
   }
 
   private resolveCoinGeckoId(assetSymbol: string): string | null {
@@ -278,8 +396,18 @@ export class CryptoOracleService {
 
   private normalizeSymbol(value: string): string {
     if (typeof value !== "string" || value.trim().length === 0) {
-      throw new ServiceUnavailableException("assetSymbol обязателен");
+      throw new ServiceUnavailableException("assetSymbol is required");
     }
     return value.trim().toUpperCase();
+  }
+
+  private resolveSigningKey(): string {
+    const key = process.env.ORACLE_SIGNING_KEY?.trim();
+    if (!key) {
+      throw new Error(
+        "ORACLE_SIGNING_KEY environment variable is required for oracle signing"
+      );
+    }
+    return key;
   }
 }

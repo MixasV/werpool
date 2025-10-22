@@ -39,6 +39,15 @@ interface RecordEventOptions {
   actor?: string;
 }
 
+interface SpendPointsOptions {
+  address: string;
+  amount: number;
+  source?: PointEventSource;
+  reference?: string;
+  notes?: string;
+  actor?: string;
+}
+
 @Injectable()
 export class PointsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -96,6 +105,49 @@ export class PointsService {
     }
 
     return this.recordEvent(options);
+  }
+
+  async spendPoints(options: SpendPointsOptions): Promise<PointLedgerEntryDto> {
+    if (options.amount <= 0) {
+      throw new BadRequestException("Points amount must be positive");
+    }
+
+    const normalizedAddress = options.address.toLowerCase();
+    const spendAmount = new Prisma.Decimal(options.amount);
+
+    const ledgerEntry = await this.prisma.$transaction(async (tx) => {
+      const summary = await tx.userPoints.findUnique({
+        where: { address: normalizedAddress },
+      });
+
+      if (!summary || summary.total.lessThan(spendAmount)) {
+        throw new BadRequestException("Insufficient points balance");
+      }
+
+      const createdLedger = await tx.userPointLedger.create({
+        data: {
+          address: normalizedAddress,
+          source: options.source ?? PointEventSource.ROLE_PURCHASE,
+          amount: spendAmount.negated(),
+          reference: options.reference ?? null,
+          notes: options.notes ?? null,
+          createdBy: options.actor ?? null,
+        },
+      });
+
+      await tx.userPoints.update({
+        where: { address: normalizedAddress },
+        data: {
+          total: {
+            decrement: spendAmount,
+          },
+        },
+      });
+
+      return createdLedger;
+    });
+
+    return this.toLedgerDto(ledgerEntry);
   }
 
   async recordEvent(options: RecordEventOptions): Promise<PointLedgerEntryDto> {

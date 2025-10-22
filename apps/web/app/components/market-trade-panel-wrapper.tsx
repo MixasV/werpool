@@ -72,8 +72,10 @@ export function MarketTradePanelWrapper({
   // Enhanced execute handler that chooses between user-signed and backend-signed
   const handleExecuteTrade = useCallback(
     async (payload: ExecuteTradePayload): Promise<ExecuteTradeResult> => {
+      const requiresBackend = payload.topShotSelection !== undefined;
+
       // If user can sign transactions with their wallet, use FCL
-      if (canUseUserSigning && loggedIn && authMode === 'wallet') {
+      if (!requiresBackend && canUseUserSigning && loggedIn && authMode === 'wallet') {
         try {
           // First get a quote
           const quote = await onQuote({
@@ -112,12 +114,17 @@ export function MarketTradePanelWrapper({
 
           // Return a result compatible with backend response
           return {
-            success: true,
-            txId,
+            transactionId: txId,
+            signer: "user",
+            network: network ?? "unknown",
             flowAmount: quote.flowAmount,
-            shares: payload.shares.toString(),
-            outcomeIndex: payload.outcomeIndex,
-            isBuy: payload.isBuy,
+            outcomeAmount: quote.outcomeAmount,
+            newBVector: quote.newBVector,
+            newTotalLiquidity: quote.newTotalLiquidity,
+            newOutcomeSupply: quote.newOutcomeSupply,
+            probabilities: quote.probabilities,
+            cadenceArguments: quote.cadenceArguments,
+            transactionPath: quote.transactionPath,
           };
         } catch (error: any) {
           console.error('User-signed transaction failed, falling back to backend:', error);
@@ -142,6 +149,7 @@ export function MarketTradePanelWrapper({
       market.title,
       executeUserSignedTrade,
       resetTransaction,
+      network,
     ]
   );
 
@@ -162,6 +170,7 @@ export function MarketTradePanelWrapper({
         refreshPool={refreshPool}
         marketSlug={marketSlug}
         marketId={marketId}
+        marketCategory={market.category}
         initialTrades={initialTrades}
         tradesLimit={tradesLimit}
       />

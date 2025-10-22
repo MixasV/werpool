@@ -1,115 +1,113 @@
-import { API_BASE_URL, parseJson, withAuthHeaders, type AuthOptions } from "./api-client";
+/**
+ * API Client for Role Purchase
+ */
 
-export type RoleType = "admin" | "operator" | "oracle" | "patrol";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-export interface RoleAssignment {
+export interface RolePurchaseRequest {
   id: string;
-  address: string;
-  role: RoleType;
+  userAddress: string;
+  role: string;
+  pointsSpent: number;
+  status: 'PENDING' | 'APPROVED' | 'DECLINED' | 'COMPLETED';
   createdAt: string;
+  processedAt?: string | null;
+  processedBy?: string | null;
+  notes?: string | null;
 }
 
-export interface FlowUser {
-  address: string;
-  label: string | null;
-  firstSeenAt: string;
-  lastSeenAt: string | null;
-  roles: RoleAssignment[];
-}
-
-export const fetchRoleAssignments = async (
-  auth?: AuthOptions
-): Promise<RoleAssignment[]> => {
-  const response = await fetch(
-    `${API_BASE_URL}/admin/roles`,
-    withAuthHeaders({ cache: "no-store" }, auth)
-  );
-  return parseJson<RoleAssignment[]>(response);
-};
-
-export const fetchRoleDirectory = async (
-  auth?: AuthOptions
-): Promise<FlowUser[]> => {
-  const response = await fetch(
-    `${API_BASE_URL}/admin/roles/directory`,
-    withAuthHeaders({ cache: "no-store" }, auth)
-  );
-
-  return parseJson<FlowUser[]>(response);
-};
-
-export const assignRole = async (payload: {
-  address: string;
-  role: RoleType;
-  label?: string | null;
-}, auth?: AuthOptions): Promise<RoleAssignment> => {
-  const response = await fetch(
-    `${API_BASE_URL}/admin/roles`,
-    withAuthHeaders(
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      },
-      auth
-    )
-  );
-
-  return parseJson<RoleAssignment>(response);
-};
-
-export const revokeRole = async (id: string, auth?: AuthOptions): Promise<void> => {
-  const response = await fetch(
-    `${API_BASE_URL}/admin/roles/${encodeURIComponent(id)}`,
-    withAuthHeaders({ method: "DELETE" }, auth)
-  );
+/**
+ * Request a PATROL role purchase for 20,000 points
+ */
+export async function requestRolePurchase(): Promise<RolePurchaseRequest> {
+  const response = await fetch(`${API_BASE_URL}/roles/purchase`, {
+    method: 'POST',
+    credentials: 'include',
+  });
 
   if (!response.ok) {
-    const reason = await response.text();
-    throw new Error(`API ${response.status}: ${reason}`);
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to request role purchase');
   }
-};
 
-export const grantRoleOnchain = async (
-  payload: { transactionId: string; label?: string | null },
-  auth?: AuthOptions
-): Promise<RoleAssignment> => {
-  const response = await fetch(
-    `${API_BASE_URL}/admin/roles/grant`,
-    withAuthHeaders(
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      },
-      auth
-    )
-  );
+  return response.json();
+}
 
-  return parseJson<RoleAssignment>(response);
-};
+/**
+ * Get user's role purchase requests
+ */
+export async function getUserRolePurchases(): Promise<RolePurchaseRequest[]> {
+  const response = await fetch(`${API_BASE_URL}/roles/purchase`, {
+    credentials: 'include',
+    cache: 'no-store',
+  });
 
-export const revokeRoleOnchain = async (
-  payload: { transactionId: string },
-  auth?: AuthOptions
-): Promise<RoleAssignment> => {
-  const response = await fetch(
-    `${API_BASE_URL}/admin/roles/revoke`,
-    withAuthHeaders(
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      },
-      auth
-    )
-  );
+  if (!response.ok) {
+    throw new Error('Failed to fetch role purchases');
+  }
 
-  return parseJson<RoleAssignment>(response);
-};
+  return response.json();
+}
+
+/**
+ * Get all role purchase requests (admin only)
+ */
+export async function getAllRolePurchases(status?: string): Promise<RolePurchaseRequest[]> {
+  const url = new URL(`${API_BASE_URL}/admin/role-purchase`);
+  if (status) {
+    url.searchParams.set('status', status);
+  }
+
+  const response = await fetch(url.toString(), {
+    credentials: 'include',
+    cache: 'no-store',
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch all role purchases');
+  }
+
+  return response.json();
+}
+
+/**
+ * Approve a role purchase request (admin only)
+ */
+export async function approveRolePurchase(id: string, notes?: string): Promise<RolePurchaseRequest> {
+  const response = await fetch(`${API_BASE_URL}/admin/role-purchase/${id}/approve`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ notes }),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to approve request');
+  }
+
+  return response.json();
+}
+
+/**
+ * Decline a role purchase request (admin only)
+ */
+export async function declineRolePurchase(id: string, notes?: string): Promise<RolePurchaseRequest> {
+  const response = await fetch(`${API_BASE_URL}/admin/role-purchase/${id}/decline`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ notes }),
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to decline request');
+  }
+
+  return response.json();
+}

@@ -10,9 +10,9 @@ NETWORK="${FLOW_NETWORK:-testnet}"
 FLOW_BIN="${FLOW_BIN:-flow}"
 
 echo "Using flow.json: $FLOW_JSON"
-echo "Deploying contracts to $NETWORK as $ACCOUNT_ALIAS"
+echo "Deploying contracts to $NETWORK"
 
-cd "$CONTRACTS_DIR"
+cd "$ROOT_DIR"
 
 if ! command -v "$FLOW_BIN" >/dev/null 2>&1; then
   echo "Flow CLI ($FLOW_BIN) not found in PATH" >&2
@@ -20,9 +20,7 @@ if ! command -v "$FLOW_BIN" >/dev/null 2>&1; then
 fi
 
 "$FLOW_BIN" project deploy \
-  --config "$FLOW_JSON" \
   --network "$NETWORK" \
-  --update \
-  --signer "$ACCOUNT_ALIAS"
+  --update
 
 echo "Deployment finished"

@@ -14,6 +14,9 @@ import { MarketAnalyticsService } from "./market-analytics.service";
 import { MarketPoolStateService } from "./market-pool-state.service";
 import type { SchedulerService } from "../scheduler/scheduler.service";
 import type { PointsService } from "../points/points.service";
+import type { TopShotLockService } from "../topshot/topshot-lock.service";
+import type { TopShotService } from "../topshot/topshot.service";
+import type { TopShotRewardService } from "../topshot/topshot-reward.service";
 
 describe("MarketsService", () => {
   let prismaMock: {
@@ -61,6 +64,17 @@ describe("MarketsService", () => {
   let analyticsServiceMock: { recordTrade: jest.Mock; getSnapshots: jest.Mock };
   let schedulerServiceMock: { createTask: jest.Mock };
   let pointsServiceMock: { recordEvent: jest.Mock };
+  let topShotLockServiceMock: {
+    lockMoment: jest.Mock;
+    getActiveLock: jest.Mock;
+    releaseLock: jest.Mock;
+    buildProjectedBonus: jest.Mock;
+  };
+  let topShotServiceMock: {
+    getOwnerMoments: jest.Mock;
+    getMomentDetail: jest.Mock;
+  };
+  let topShotRewardServiceMock: { processSettlement: jest.Mock };
   let updatesGatewayMock: {
     emitPoolStateUpdate: jest.Mock;
     emitTransactionLog: jest.Mock;
@@ -244,6 +258,19 @@ describe("MarketsService", () => {
     pointsServiceMock = {
       recordEvent: jest.fn().mockResolvedValue(undefined),
     };
+    topShotLockServiceMock = {
+      lockMoment: jest.fn(),
+      getActiveLock: jest.fn(),
+      releaseLock: jest.fn(),
+      buildProjectedBonus: jest.fn(),
+    };
+    topShotServiceMock = {
+      getOwnerMoments: jest.fn(),
+      getMomentDetail: jest.fn(),
+    };
+    topShotRewardServiceMock = {
+      processSettlement: jest.fn(),
+    };
     updatesGatewayMock = {
       emitPoolStateUpdate: jest.fn(),
       emitTransactionLog: jest.fn(),
@@ -259,7 +286,10 @@ describe("MarketsService", () => {
       analyticsServiceMock as unknown as MarketAnalyticsService,
       schedulerServiceMock as unknown as SchedulerService,
       pointsServiceMock as unknown as PointsService,
-      updatesGatewayMock as unknown as MarketUpdatesGateway
+      updatesGatewayMock as unknown as MarketUpdatesGateway,
+      topShotLockServiceMock as unknown as TopShotLockService,
+      topShotServiceMock as unknown as TopShotService,
+      topShotRewardServiceMock as unknown as TopShotRewardService
     );
   });
 
@@ -1947,11 +1977,30 @@ describe("MarketsService", () => {
       rawStderr: "",
     });
 
+    prismaMock.marketTrade.create.mockResolvedValue({
+      id: "trade-123",
+      marketId: "42",
+      outcomeId: marketRecord.outcomes[0].id,
+      outcomeLabel: marketRecord.outcomes[0].label,
+      outcomeIndex: 0,
+      shares: new Prisma.Decimal(5),
+      flowAmount: new Prisma.Decimal(quote.flowAmount),
+      isBuy: true,
+      probabilities: quote.probabilities,
+      maxFlowAmount: null,
+      transactionId: "def456",
+      signer: "0x1234567890abcdef",
+      network: "testing",
+      createdAt: new Date(),
+    });
+
+    prismaMock.marketTrade.findMany.mockResolvedValue([]);
+
     const payload = {
       outcomeIndex: 0,
       shares: 5,
       isBuy: true,
-      signer: "user-account",
+      signer: "0x1234567890abcdef",
       network: "testing",
     };
 
@@ -1960,11 +2009,11 @@ describe("MarketsService", () => {
     expect(flowTransactionServiceMock.send).toHaveBeenCalledWith({
       transactionPath: "contracts/cadence/transactions/executeTrade.cdc",
       arguments: expect.any(Array),
-      signer: "user-account",
+      signer: "0x1234567890abcdef",
       network: "testing",
     });
 
-    expect(result.signer).toBe("user-account");
+    expect(result.signer).toBe("0x1234567890abcdef");
     expect(result.network).toBe("testing");
     expect(result.transactionId).toBe("def456");
     expect(result.cadenceArguments).toEqual(
@@ -1979,7 +2028,7 @@ describe("MarketsService", () => {
         data: expect.objectContaining({
           marketId: marketRecord.id,
           type: "EXECUTE_TRADE",
-          signer: "user-account",
+          signer: "0x1234567890abcdef",
           network: "testing",
         }),
       })
@@ -1990,7 +2039,7 @@ describe("MarketsService", () => {
         slug: marketRecord.slug,
         type: "EXECUTE_TRADE",
         transactionId: "def456",
-        signer: "user-account",
+        signer: "0x1234567890abcdef",
         network: "testing",
       })
     );
@@ -1999,7 +2048,7 @@ describe("MarketsService", () => {
       expect.objectContaining({
         slug: marketRecord.slug,
         transactionId: "def456",
-        signer: "user-account",
+        signer: "0x1234567890abcdef",
         network: "testing",
       })
     );

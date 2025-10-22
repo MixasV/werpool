@@ -7,6 +7,380 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Market {
+  id                  String                    @id @default(uuid())
+  slug                String                    @unique
+  title               String
+  description         String
+  state               MarketState               @default(DRAFT)
+  createdAt           DateTime                  @default(now())
+  closeAt             DateTime?
+  category            MarketCategory            @default(CRYPTO)
+  freezeWindowEndAt   DateTime?
+  freezeWindowStartAt DateTime?
+  oracleId            String?
+  patrolThreshold     Decimal                   @default(0) @db.Decimal(18, 8)
+  scheduledStartAt    DateTime?
+  tags                String[]                  @default([])
+  tradingLockAt       DateTime?
+  liquidityPool       LiquidityPool?
+  analytics           MarketAnalyticsSnapshot[]
+  poolState           MarketPoolState?
+  trades              MarketTrade[]
+  transactions        MarketTransactionLog[]
+  outcomes            Outcome[]
+  patrolSignals       PatrolSignal[]
+  schedulerTasks      SchedulerTask[]
+  settlement          Settlement?
+  workflow            WorkflowAction[]
+  topShotLocks        TopShotMomentLock[]
+  mflTournaments      MFLTournament[]           @relation("MFLTournamentMarket")
+  mflMatches          MFLMatch[]                @relation("MFLMatchMarket")
+  fastBreakChallenges FastBreakChallenge[]      @relation("FastBreakChallengeMarket")
+}
+
+model LiquidityPool {
+  id             String  @id @default(uuid())
+  marketId       String  @unique
+  tokenSymbol    String
+  totalLiquidity Decimal @db.Decimal(18, 4)
+  feeBps         Int
+  providerCount  Int
+  market         Market  @relation(fields: [marketId], references: [id], onDelete: Cascade)
+}
+
+model MarketPoolState {
+  marketId           String   @id
+  flowMarketId       Int      @unique
+  liquidityParameter Decimal  @db.Decimal(18, 8)
+  totalLiquidity     Decimal  @db.Decimal(18, 8)
+  bVector            Json
+  outcomeSupply      Json
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  market             Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([marketId])
+}
+
+model Outcome {
+  id                 String        @id @default(uuid())
+  marketId           String
+  label              String
+  status             OutcomeStatus @default(ACTIVE)
+  impliedProbability Decimal       @db.Decimal(5, 4)
+  liquidity          Decimal       @db.Decimal(18, 4)
+  metadata           Json?
+  market             Market        @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  settlement         Settlement?   @relation("SettlementOutcome")
+}
+
+model WorkflowAction {
+  id          String               @id @default(uuid())
+  marketId    String
+  type        WorkflowActionType
+  status      WorkflowActionStatus @default(PENDING)
+  description String
+  triggersAt  DateTime?
+  metadata    Json?
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  market      Market               @relation(fields: [marketId], references: [id], onDelete: Cascade)
+}
+
+model Settlement {
+  id                String   @id @default(uuid())
+  marketId          String   @unique
+  resolvedOutcomeId String   @unique
+  txId              String   @unique
+  settledAt         DateTime
+  notes             String?
+  overrideReason    String?
+  market            Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  resolvedOutcome   Outcome  @relation("SettlementOutcome", fields: [resolvedOutcomeId], references: [id], onDelete: Cascade)
+}
+
+model FlowUser {
+  address                    String                 @id
+  label                      String?
+  bio                        String?                @db.VarChar(512)
+  avatarUrl                  String?
+  email                      String?                @unique
+  emailVerifiedAt            DateTime?
+  emailVerificationToken     String?                @unique
+  emailVerificationExpiresAt DateTime?
+  marketingOptIn             Boolean                @default(false)
+  profileVisibility          ProfileVisibility      @default(PUBLIC)
+  tradeHistoryVisibility     TradeHistoryVisibility @default(PRIVATE)
+  nonce                      String?
+  nonceExpiresAt             DateTime?
+  firstSeenAt                DateTime               @default(now())
+  lastSeenAt                 DateTime?
+  createdAt                  DateTime               @default(now())
+  updatedAt                  DateTime               @updatedAt
+  sessions                   FlowSession[]
+  leaderboardPlacements      LeaderboardSnapshot[]
+  oracleSnapshots            OracleSnapshot[]
+  roles                      RoleAssignment[]
+  schedulerTasks             SchedulerTask[]        @relation("SchedulerTaskCreator")
+  pointLedger                UserPointLedger[]
+  createdPointLedgerEntries  UserPointLedger[]      @relation("UserPointLedgerCreator")
+  pointsSummary              UserPoints?
+  topShotLocks               TopShotMomentLock[]
+  topShotRewards             TopShotReward[]        @relation("TopShotRewardUser")
+  rolePurchaseRequests       RolePurchaseRequest[]
+  processedRolePurchases     RolePurchaseRequest[]  @relation("RolePurchaseProcessedBy")
+}
+
+model FlowSession {
+  id              String   @id @default(uuid())
+  flowUserAddress String
+  tokenHash       String   @unique
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  flowUser        FlowUser @relation(fields: [flowUserAddress], references: [address], onDelete: Cascade)
+
+  @@index([flowUserAddress])
+}
+
+model RoleAssignment {
+  id        String   @id @default(uuid())
+  address   String
+  role      RoleType
+  createdAt DateTime @default(now())
+  flowUser  FlowUser @relation(fields: [address], references: [address])
+
+  @@unique([address, role])
+}
+
+model OracleSnapshot {
+  id          String         @id @default(uuid())
+  type        OracleFeedType
+  source      String
+  assetSymbol String?
+  eventId     String?
+  payload     Json
+  signature   String
+  publishedBy String?
+  createdAt   DateTime       @default(now())
+  publisher   FlowUser?      @relation(fields: [publishedBy], references: [address])
+
+  @@index([type, createdAt])
+  @@index([source])
+  @@index([assetSymbol])
+}
+
+model PatrolSignal {
+  id        String               @id @default(uuid())
+  marketId  String
+  issuer    String
+  severity  PatrolSignalSeverity
+  code      String
+  weight    Decimal              @db.Decimal(18, 8)
+  createdAt DateTime             @default(now())
+  expiresAt DateTime?
+  notes     String?
+  market    Market               @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@unique([marketId, issuer])
+  @@index([marketId])
+}
+
+model SchedulerTask {
+  id            String              @id @default(uuid())
+  marketId      String?
+  type          SchedulerTaskType
+  status        SchedulerTaskStatus @default(PENDING)
+  scheduledFor  DateTime
+  payload       Json?
+  description   String?             @db.VarChar(512)
+  attempts      Int                 @default(0)
+  lastError     String?
+  lastAttemptAt DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+  createdBy     String?
+  creator       FlowUser?           @relation("SchedulerTaskCreator", fields: [createdBy], references: [address])
+  market        Market?             @relation(fields: [marketId], references: [id])
+
+  @@index([status, scheduledFor])
+  @@index([marketId])
+}
+
+model UserPointLedger {
+  id        String           @id @default(uuid())
+  address   String
+  source    PointEventSource
+  amount    Decimal          @db.Decimal(18, 4)
+  reference String?
+  notes     String?
+  createdAt DateTime         @default(now())
+  createdBy String?
+  user      FlowUser         @relation(fields: [address], references: [address], onDelete: SetNull)
+  creator   FlowUser?        @relation("UserPointLedgerCreator", fields: [createdBy], references: [address])
+
+  @@index([address, createdAt])
+  @@index([source])
+  @@index([reference])
+}
+
+model UserPoints {
+  address   String   @id
+  total     Decimal  @default(0) @db.Decimal(18, 4)
+  updatedAt DateTime @updatedAt
+  user      FlowUser @relation(fields: [address], references: [address], onDelete: Cascade)
+}
+
+model LeaderboardSnapshot {
+  id         String   @id @default(uuid())
+  capturedAt DateTime @default(now())
+  address    String
+  rank       Int
+  total      Decimal  @db.Decimal(18, 4)
+  createdAt  DateTime @default(now())
+  user       FlowUser @relation(fields: [address], references: [address], onDelete: SetNull)
+
+  @@index([capturedAt])
+  @@index([address])
+  @@index([rank])
+}
+
+model TopShotMomentLock {
+  id              String           @id @default(uuid())
+  userAddress     String
+  marketId        String
+  eventId         String
+  momentId        String
+  rarity          String
+  playerId        String?
+  playerName      String?
+  teamName        String?
+  outcomeType     String
+  outcomeIndex    Int
+  lockedAt        DateTime         @default(now())
+  changeDeadline  DateTime
+  lockedUntil     DateTime
+  releasedAt      DateTime?
+  status          MomentLockStatus @default(ACTIVE)
+  estimatedReward Decimal?         @db.Decimal(18, 4)
+  metadata        Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  rewards         TopShotReward[]
+  user            FlowUser         @relation(fields: [userAddress], references: [address], onDelete: Cascade)
+  market          Market           @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@unique([userAddress, marketId])
+  @@index([marketId])
+  @@index([eventId])
+  @@index([userAddress, status])
+}
+
+model TopShotReward {
+  id           String            @id @default(uuid())
+  lockId       String
+  userAddress  String
+  marketId     String
+  eventId      String
+  outcomeIndex Int
+  momentId     String
+  points       Decimal           @db.Decimal(18, 6)
+  awardedAt    DateTime          @default(now())
+  snapshotId   String?
+  metadata     Json?
+  lock         TopShotMomentLock @relation(fields: [lockId], references: [id], onDelete: Cascade)
+  user         FlowUser          @relation("TopShotRewardUser", fields: [userAddress], references: [address], onDelete: Cascade)
+
+  @@index([awardedAt])
+  @@index([lockId])
+  @@index([userAddress])
+  @@index([marketId])
+  @@index([eventId])
+}
+
+model RolePurchaseRequest {
+  id              String             @id @default(uuid())
+  userAddress     String
+  role            RoleType
+  pointsSpent     Decimal            @db.Decimal(18, 4)
+  status          RolePurchaseStatus @default(PENDING)
+  createdAt       DateTime           @default(now())
+  processedAt     DateTime?
+  processedBy     String?
+  notes           String?
+  metadata        Json?
+  user            FlowUser           @relation(fields: [userAddress], references: [address], onDelete: Cascade)
+  processedByUser FlowUser?          @relation("RolePurchaseProcessedBy", fields: [processedBy], references: [address])
+
+  @@index([userAddress])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model MarketTransactionLog {
+  id            String                @id @default(uuid())
+  marketId      String
+  transactionId String                @unique
+  type          FlowTransactionType
+  status        FlowTransactionStatus @default(SUCCESS)
+  signer        String
+  network       String
+  payload       Json?
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+  market        Market                @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([marketId])
+}
+
+model MarketTrade {
+  id            String   @id @default(uuid())
+  marketId      String
+  outcomeId     String?
+  outcomeLabel  String
+  outcomeIndex  Int
+  shares        Decimal  @db.Decimal(18, 8)
+  flowAmount    Decimal  @db.Decimal(18, 8)
+  isBuy         Boolean
+  probabilities Json
+  maxFlowAmount Decimal? @db.Decimal(18, 8)
+  transactionId String   @unique
+  signer        String
+  network       String
+  createdAt     DateTime @default(now())
+  market        Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@index([marketId])
+  @@index([marketId, createdAt])
+}
+
+model MarketAnalyticsSnapshot {
+  id           String                  @id @default(uuid())
+  marketId     String
+  outcomeId    String?
+  outcomeIndex Int
+  outcomeLabel String
+  interval     MarketAnalyticsInterval
+  bucketStart  DateTime
+  bucketEnd    DateTime
+  openPrice    Decimal                 @db.Decimal(18, 8)
+  closePrice   Decimal                 @db.Decimal(18, 8)
+  highPrice    Decimal                 @db.Decimal(18, 8)
+  lowPrice     Decimal                 @db.Decimal(18, 8)
+  averagePrice Decimal                 @db.Decimal(18, 8)
+  volumeShares Decimal                 @db.Decimal(18, 8)
+  volumeFlow   Decimal                 @db.Decimal(18, 8)
+  netFlow      Decimal                 @db.Decimal(18, 8)
+  tradeCount   Int
+  createdAt    DateTime                @default(now())
+  updatedAt    DateTime                @updatedAt
+  market       Market                  @relation(fields: [marketId], references: [id], onDelete: Cascade)
+
+  @@unique([marketId, outcomeIndex, interval, bucketStart])
+  @@index([marketId, interval, bucketStart])
+}
+
 enum MarketState {
   DRAFT
   LIVE
@@ -109,6 +483,23 @@ enum PointEventSource {
   PATROL
   BONUS
   ADMIN
+  TOPSHOT
+  ROLE_PURCHASE
+}
+
+enum MomentLockStatus {
+  ACTIVE
+  TRANSFERRED
+  RELEASED
+  CANCELLED
+  EXPIRED
+}
+
+enum RolePurchaseStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  COMPLETED
 }
 
 enum ProfileVisibility {
@@ -134,312 +525,81 @@ enum MarketAnalyticsInterval {
   DAY
 }
 
-model Market {
-  id          String           @id @default(uuid())
-  slug        String           @unique
-  title       String
-  description String
-  state       MarketState      @default(DRAFT)
-  createdAt   DateTime         @default(now())
-  closeAt     DateTime?
-  category    MarketCategory   @default(CRYPTO)
-  tags        String[]         @default([])
-  oracleId    String?
-  patrolThreshold Decimal      @db.Decimal(18, 8) @default(0)
-  scheduledStartAt     DateTime?
-  tradingLockAt        DateTime?
-  freezeWindowStartAt  DateTime?
-  freezeWindowEndAt    DateTime?
+// MFL Prediction Markets Models
+model MFLTournament {
+  id              String   @id @default(cuid())
+  mflTournamentId String   @unique
+  name            String
+  startDate       DateTime
+  endDate         DateTime
+  participants    Json
+  winnerId        String?
+  status          String   @default("UPCOMING")
+  marketId        String?  @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  market          Market?  @relation("MFLTournamentMarket", fields: [marketId], references: [id], onDelete: SetNull)
 
-  liquidityPool LiquidityPool?
-  poolState     MarketPoolState?
-  outcomes      Outcome[]
-  workflow      WorkflowAction[]
-  settlement    Settlement?
-  transactions  MarketTransactionLog[]
-  trades        MarketTrade[]
-  analytics     MarketAnalyticsSnapshot[]
-  patrolSignals PatrolSignal[]
-  schedulerTasks SchedulerTask[]
+  @@index([status])
+  @@index([startDate])
 }
 
-model LiquidityPool {
-  id             String  @id @default(uuid())
-  marketId       String  @unique
-  tokenSymbol    String
-  totalLiquidity Decimal @db.Decimal(18, 4)
-  feeBps         Int
-  providerCount  Int
+model MFLMatch {
+  id          String   @id @default(cuid())
+  mflMatchId  String   @unique
+  homeClubId  String
+  awayClubId  String
+  kickoffTime DateTime
+  result      String?
+  marketId    String?  @unique
+  createdAt   DateTime @default(now())
+  market      Market?  @relation("MFLMatchMarket", fields: [marketId], references: [id], onDelete: SetNull)
 
-  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  @@index([kickoffTime])
 }
 
-model MarketPoolState {
-  marketId           String @id
-  flowMarketId       Int    @unique
-  liquidityParameter Decimal @db.Decimal(18, 8)
-  totalLiquidity     Decimal @db.Decimal(18, 8)
-  bVector            Json
-  outcomeSupply      Json
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+// FastBreak Peer Betting Models
+model FastBreakChallenge {
+  id                String    @id @default(cuid())
+  type              String
+  bettingType       String
+  creator           String
+  creatorUsername   String?
+  opponent          String?
+  opponentUsername  String?
+  creatorStake      Float
+  opponentStake     Float?
+  question          String
+  duration          Int
+  closeAt           DateTime
+  state             String    @default("PENDING")
+  createdAt         DateTime  @default(now())
+  matchedAt         DateTime?
+  settledAt         DateTime?
+  cancelledAt       DateTime?
+  winnerAddress     String?
+  creatorRank       Int?
+  opponentRank      Int?
+  proof             Json?
+  marketId          String?   @unique
+  excludeFromPoints Boolean   @default(true)
+  market            Market?   @relation("FastBreakChallengeMarket", fields: [marketId], references: [id], onDelete: SetNull)
 
-  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
-
-  @@index([marketId])
+  @@index([creator, state])
+  @@index([opponent, state])
+  @@index([state, closeAt])
 }
 
-model Outcome {
-  id                 String        @id @default(uuid())
-  marketId           String
-  label              String
-  status             OutcomeStatus @default(ACTIVE)
-  impliedProbability Decimal       @db.Decimal(5, 4)
-  liquidity          Decimal       @db.Decimal(18, 4)
-  metadata           Json?
-
-  market     Market      @relation(fields: [marketId], references: [id], onDelete: Cascade)
-  settlement Settlement? @relation("SettlementOutcome")
-}
-
-model WorkflowAction {
-  id          String                @id @default(uuid())
-  marketId    String
-  type        WorkflowActionType
-  status      WorkflowActionStatus @default(PENDING)
-  description String
-  triggersAt  DateTime?
-  metadata    Json?
-
-  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
-}
-
-model Settlement {
-  id                String   @id @default(uuid())
-  marketId          String   @unique
-  resolvedOutcomeId String   @unique
-  txId              String   @unique
-  settledAt         DateTime
-  notes             String?
-  overrideReason    String?
-
-  market          Market  @relation(fields: [marketId], references: [id], onDelete: Cascade)
-  resolvedOutcome Outcome @relation("SettlementOutcome", fields: [resolvedOutcomeId], references: [id], onDelete: Cascade)
-}
-
-model FlowUser {
-  address        String         @id
-  label          String?
-  bio            String?        @db.VarChar(512)
-  avatarUrl      String?
-  email          String?        @unique
-  emailVerifiedAt DateTime?
-  emailVerificationToken String? @unique
-  emailVerificationExpiresAt DateTime?
-  marketingOptIn Boolean        @default(false)
-  profileVisibility        ProfileVisibility       @default(PUBLIC)
-  tradeHistoryVisibility   TradeHistoryVisibility  @default(PRIVATE)
-  nonce          String?
-  nonceExpiresAt DateTime?
-  firstSeenAt    DateTime       @default(now())
-  lastSeenAt     DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-
-  sessions FlowSession[]
-  roles    RoleAssignment[]
-  oracleSnapshots OracleSnapshot[]
-  schedulerTasks  SchedulerTask[] @relation("SchedulerTaskCreator")
-  pointLedger     UserPointLedger[]
-  createdPointLedgerEntries UserPointLedger[] @relation("UserPointLedgerCreator")
-  leaderboardPlacements LeaderboardSnapshot[]
-  pointsSummary   UserPoints?
-}
-
-model FlowSession {
-  id               String    @id @default(uuid())
-  flowUserAddress  String
-  tokenHash        String    @unique
-  expiresAt        DateTime
-  createdAt        DateTime  @default(now())
-
-  flowUser FlowUser @relation(fields: [flowUserAddress], references: [address], onDelete: Cascade)
-
-  @@index([flowUserAddress])
-}
-
-model RoleAssignment {
-  id        String    @id @default(uuid())
-  address   String
-  role      RoleType
-  createdAt DateTime  @default(now())
-
-  flowUser FlowUser? @relation(fields: [address], references: [address])
-
-  @@unique([address, role])
-}
-
-model OracleSnapshot {
-  id             String          @id @default(uuid())
-  type           OracleFeedType
-  source         String
-  assetSymbol    String?
-  eventId        String?
-  payload        Json
-  signature      String
-  publishedBy    String?
-  createdAt      DateTime        @default(now())
-
-  publisher FlowUser? @relation(fields: [publishedBy], references: [address], onDelete: SetNull)
-
-  @@index([type, createdAt])
-  @@index([source])
-  @@index([assetSymbol])
-}
-
-model PatrolSignal {
-  id        String                @id @default(uuid())
-  marketId  String
-  issuer    String
-  severity  PatrolSignalSeverity
-  code      String
-  weight    Decimal               @db.Decimal(18, 8)
-  createdAt DateTime              @default(now())
-  expiresAt DateTime?
-  notes     String?
-
-  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
-
-  @@index([marketId])
-  @@unique([marketId, issuer])
-}
-
-model SchedulerTask {
-  id            String               @id @default(uuid())
-  marketId      String?
-  type          SchedulerTaskType
-  status        SchedulerTaskStatus  @default(PENDING)
-  scheduledFor  DateTime
-  payload       Json?
-  description   String?              @db.VarChar(512)
-  attempts      Int                  @default(0)
-  lastError     String?
-  lastAttemptAt DateTime?
-  completedAt   DateTime?
-  createdAt     DateTime             @default(now())
-  updatedAt     DateTime             @updatedAt
-  createdBy     String?
-
-  market   Market?   @relation(fields: [marketId], references: [id], onDelete: SetNull)
-  creator  FlowUser? @relation("SchedulerTaskCreator", fields: [createdBy], references: [address], onDelete: SetNull)
-
-  @@index([status, scheduledFor])
-  @@index([marketId])
-}
-
-model UserPointLedger {
-  id         String           @id @default(uuid())
+model FastBreakLeaderboard {
+  id         String   @id @default(cuid())
+  week       Int
+  year       Int
   address    String
-  source     PointEventSource
-  amount     Decimal          @db.Decimal(18, 4)
-  reference  String?
-  notes      String?
-  createdAt  DateTime         @default(now())
-  createdBy  String?
-
-  user FlowUser? @relation(fields: [address], references: [address], onDelete: SetNull)
-  creator FlowUser? @relation("UserPointLedgerCreator", fields: [createdBy], references: [address], onDelete: SetNull)
-
-  @@index([address, createdAt])
-  @@index([source])
-  @@index([reference])
-}
-
-model UserPoints {
-  address   String   @id
-  total     Decimal  @db.Decimal(18, 4) @default(0)
-  updatedAt DateTime @updatedAt
-
-  user FlowUser @relation(fields: [address], references: [address], onDelete: Cascade)
-}
-
-model LeaderboardSnapshot {
-  id         String   @id @default(uuid())
-  capturedAt DateTime @default(now())
-  address    String
+  username   String
   rank       Int
-  total      Decimal  @db.Decimal(18, 4)
-  createdAt  DateTime @default(now())
+  score      Float
+  snapshotAt DateTime @default(now())
 
-  user FlowUser? @relation(fields: [address], references: [address], onDelete: SetNull)
-
-  @@index([capturedAt])
-  @@index([address])
-  @@index([rank])
-}
-
-model MarketTransactionLog {
-  id             String                 @id @default(uuid())
-  marketId       String
-  transactionId  String                 @unique
-  type           FlowTransactionType
-  status         FlowTransactionStatus  @default(SUCCESS)
-  signer         String
-  network        String
-  payload        Json?
-  createdAt      DateTime               @default(now())
-  updatedAt      DateTime               @updatedAt
-
-  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
-
-  @@index([marketId])
-}
-
-model MarketTrade {
-  id             String    @id @default(uuid())
-  marketId       String
-  outcomeId      String?
-  outcomeLabel   String
-  outcomeIndex   Int
-  shares         Decimal   @db.Decimal(18, 8)
-  flowAmount     Decimal   @db.Decimal(18, 8)
-  isBuy          Boolean
-  probabilities  Json
-  maxFlowAmount  Decimal?  @db.Decimal(18, 8)
-  transactionId  String    @unique
-  signer         String
-  network        String
-  createdAt      DateTime  @default(now())
-
-  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
-
-  @@index([marketId])
-  @@index([marketId, createdAt])
-}
-
-model MarketAnalyticsSnapshot {
-  id            String                  @id @default(uuid())
-  marketId      String
-  outcomeId     String?
-  outcomeIndex  Int
-  outcomeLabel  String
-  interval      MarketAnalyticsInterval
-  bucketStart   DateTime
-  bucketEnd     DateTime
-  openPrice     Decimal                 @db.Decimal(18, 8)
-  closePrice    Decimal                 @db.Decimal(18, 8)
-  highPrice     Decimal                 @db.Decimal(18, 8)
-  lowPrice      Decimal                 @db.Decimal(18, 8)
-  averagePrice  Decimal                 @db.Decimal(18, 8)
-  volumeShares  Decimal                 @db.Decimal(18, 8)
-  volumeFlow    Decimal                 @db.Decimal(18, 8)
-  netFlow       Decimal                 @db.Decimal(18, 8)
-  tradeCount    Int
-  createdAt     DateTime                @default(now())
-  updatedAt     DateTime                @updatedAt
-
-  market Market @relation(fields: [marketId], references: [id], onDelete: Cascade)
-
-  @@index([marketId, interval, bucketStart])
-  @@unique([marketId, outcomeIndex, interval, bucketStart])
+  @@unique([week, year, address])
+  @@index([week, year, rank])
 }

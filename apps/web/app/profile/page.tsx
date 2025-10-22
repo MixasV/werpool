@@ -5,11 +5,15 @@ import { redirect } from "next/navigation";
 import { fetchMyProfile } from "../lib/users-api";
 import { fetchMyPointsSummary } from "../lib/points-api";
 import { ProfileSettingsClient } from "./profile-settings-client";
+import { fetchMyRolePurchaseRequests } from "../lib/roles-api";
+import { TopShotRewardsSection } from "./topshot-rewards-section";
+import { RolePurchaseSection } from "./role-purchase-section";
 
 export const dynamic = "force-dynamic";
 
 const getProfile = cache(() => fetchMyProfile({ allowApiTokenFallback: false }));
 const getPointsSummary = cache(() => fetchMyPointsSummary({ allowApiTokenFallback: false }));
+const getRolePurchases = cache(() => fetchMyRolePurchaseRequests({ allowApiTokenFallback: false }));
 
 const sessionCookieName = process.env.NEXT_PUBLIC_FLOW_SESSION_COOKIE ?? "flow_session";
 
@@ -21,7 +25,11 @@ export default async function ProfilePage() {
     redirect("/markets");
   }
 
-  const [profile, points] = await Promise.all([getProfile(), getPointsSummary()]);
+  const [profile, points, rolePurchases] = await Promise.all([
+    getProfile(),
+    getPointsSummary(),
+    getRolePurchases(),
+  ]);
 
   return (
     <div className="profile-page">
@@ -45,7 +53,11 @@ export default async function ProfilePage() {
         </div>
       </section>
 
-      <ProfileSettingsClient initialProfile={profile} points={points.total} />
+      <ProfileSettingsClient
+        initialProfile={profile}
+        initialPoints={points.total}
+        initialRolePurchases={rolePurchases}
+      />
     </div>
   );
 }

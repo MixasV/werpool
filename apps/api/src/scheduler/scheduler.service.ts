@@ -17,6 +17,7 @@ import {
 import { PrismaService } from "../prisma/prisma.service";
 import { PointsService } from "../points/points.service";
 import { SchedulerTaskDto, TaskExecutionResult } from "./dto/scheduler-task.dto";
+import { serializeJsonInput } from "../common/prisma-json.util";
 
 interface ListTasksParams {
   status?: PrismaSchedulerTaskStatus;
@@ -212,7 +213,7 @@ export class SchedulerService implements OnModuleInit {
     }
 
     const now = new Date();
-    const metadata: Prisma.JsonObject = {
+    const metadata: Record<string, unknown> = {
       schedulerTaskId: task.id,
       executedAt: now.toISOString(),
       scheduledFor: task.scheduledFor.toISOString(),
@@ -232,10 +233,13 @@ export class SchedulerService implements OnModuleInit {
         break;
       }
       case PrismaSchedulerTaskType.MARKET_LOCK: {
-        const lockAt =
-          task.payload && typeof task.payload === "object" && "lockAt" in task.payload
-            ? new Date(String((task.payload as Record<string, unknown>).lockAt))
-            : task.scheduledFor;
+        const payloadObject =
+          task.payload && typeof task.payload === "object" && !Array.isArray(task.payload)
+            ? (task.payload as Record<string, unknown>)
+            : undefined;
+        const lockAt = payloadObject?.lockAt
+          ? new Date(String(payloadObject.lockAt))
+          : task.scheduledFor;
         await this.prisma.market.update({
           where: { id: market.id },
           data: {
@@ -273,8 +277,12 @@ export class SchedulerService implements OnModuleInit {
       case PrismaSchedulerTaskType.CUSTOM:
       default: {
         if (!task.description) {
-          workflowDescription = task.payload && typeof task.payload === "object" && "description" in task.payload
-            ? String((task.payload as Record<string, unknown>).description)
+          const payloadObject =
+            task.payload && typeof task.payload === "object" && !Array.isArray(task.payload)
+              ? (task.payload as Record<string, unknown>)
+              : undefined;
+          workflowDescription = payloadObject?.description && typeof payloadObject.description === "string"
+            ? payloadObject.description
             : "Scheduler custom task executed";
         }
         break;
@@ -295,7 +303,7 @@ export class SchedulerService implements OnModuleInit {
         status: PrismaWorkflowActionStatus.EXECUTED,
         description: workflowDescription,
         triggersAt: task.scheduledFor,
-        metadata,
+        metadata: serializeJsonInput(metadata) ?? null,
       },
     });
 

@@ -11,9 +11,10 @@ import { AuthModule } from "../auth/auth.module";
 import { MarketPoolStateService } from "./market-pool-state.service";
 import { SchedulerModule } from "../scheduler/scheduler.module";
 import { PointsModule } from "../points/points.module";
+import { TopShotModule } from "../topshot/topshot.module";
 
 @Module({
-  imports: [AuthModule, SchedulerModule, PointsModule],
+  imports: [AuthModule, SchedulerModule, PointsModule, TopShotModule],
   controllers: [MarketsController],
   providers: [
     MarketsService,

@@ -1,9 +1,11 @@
 import { createHmac } from "crypto";
 
 export const signOraclePayload = (payload: unknown, secret: string): string => {
-  const normalizedSecret = secret && secret.length > 0 ? secret : "dev-secret";
+  if (!secret || secret.length === 0) {
+    throw new Error("Oracle signing secret must be provided");
+  }
   const serialized = stableStringify(payload);
-  return createHmac("sha256", normalizedSecret).update(serialized).digest("hex");
+  return createHmac("sha256", secret).update(serialized).digest("hex");
 };
 
 const stableStringify = (input: unknown): string => {

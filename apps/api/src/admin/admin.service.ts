@@ -14,6 +14,7 @@ import { WorkflowActionAdminDto } from "./dto/workflow-action.dto";
 import { CreateWorkflowActionDto } from "./dto/create-workflow-action.dto";
 import { UpdateWorkflowActionDto } from "./dto/update-workflow-action.dto";
 import { PatrolSignalAdminDto } from "./dto/patrol-signal.dto";
+import { parseJsonObject, serializeJsonInput } from "../common/prisma-json.util";
 
 interface WorkflowFilter {
   status?: string;
@@ -45,13 +46,7 @@ export class AdminService {
       orderBy: [{ triggersAt: "asc" }, { createdAt: "desc" }],
       take: limit,
       include: {
-        market: {
-          select: {
-            id: true,
-            slug: true,
-            title: true,
-          },
-        },
+        market: true,
       },
     });
 
@@ -79,9 +74,7 @@ export class AdminService {
         metadata: this.toInputJson(payload.metadata),
       },
       include: {
-        market: {
-          select: { id: true, slug: true, title: true },
-        },
+        market: true,
       },
     });
 
@@ -119,12 +112,12 @@ export class AdminService {
         where: { id },
         data,
         include: {
-          market: { select: { id: true, slug: true, title: true } },
+          market: true,
         },
       })
       .catch((error) => this.handleNotFound(error, id));
 
-    return this.toWorkflowDto(updated);
+    return this.toWorkflowDto(updated as Prisma.WorkflowActionGetPayload<{ include: { market: true } }>);
   }
 
   async executeWorkflowAction(
@@ -145,12 +138,12 @@ export class AdminService {
           metadata: this.toInputJson(executionMetadata),
         },
         include: {
-          market: { select: { id: true, slug: true, title: true } },
+          market: true,
         },
       })
       .catch((error) => this.handleNotFound(error, id));
 
-    return this.toWorkflowDto(updated);
+    return this.toWorkflowDto(updated as Prisma.WorkflowActionGetPayload<{ include: { market: true } }>);
   }
 
   async deleteWorkflowAction(id: string): Promise<void> {
@@ -192,11 +185,9 @@ export class AdminService {
   }
 
   private toWorkflowDto(
-    action: Prisma.WorkflowAction & {
-      market?: { id: string; slug: string | null; title: string | null } | null;
-    }
+    action: Prisma.WorkflowActionGetPayload<{ include: { market: true } }>
   ): WorkflowActionAdminDto {
-    const metadata = this.parseMetadata(action.metadata);
+    const metadata = parseJsonObject<Record<string, unknown>>(action.metadata);
     return {
       id: action.id,
       marketId: action.marketId,
@@ -242,18 +233,8 @@ export class AdminService {
     return parsed;
   }
 
-  private toInputJson(value: Record<string, unknown> | undefined): Prisma.InputJsonValue | undefined {
-    if (!value) {
-      return undefined;
-    }
-    return value as Prisma.InputJsonValue;
-  }
-
-  private parseMetadata(value: Prisma.JsonValue | null | undefined): Record<string, unknown> | null {
-    if (!value || typeof value !== "object" || Array.isArray(value)) {
-      return null;
-    }
-    return value as Record<string, unknown>;
+  private toInputJson(value: Record<string, unknown> | undefined) {
+    return serializeJsonInput(value ?? undefined);
   }
 
   private normalizeLimit(value: number | undefined, fallback: number): number {

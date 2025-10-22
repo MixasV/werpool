@@ -81,6 +81,8 @@ export interface MetaMarketTrade {
   readonly signer: string | null;
   readonly createdAt: Date;
   readonly probabilities: readonly number[];
+  readonly txId?: string;
+  readonly txStatus?: 'pending' | 'sealed' | 'failed';
 }
 
 export interface MetaMarketQuote {
@@ -97,6 +99,12 @@ export interface MetaMarketExecutionResult {
   readonly market: MetaPredictionMarket;
   readonly quote: MetaMarketQuote;
   readonly trade: MetaMarketTrade;
+  readonly txResult?: {
+    readonly txId: string;
+    readonly status: 'pending' | 'sealed' | 'failed';
+    readonly timestamp: Date;
+    readonly blockHeight?: number;
+  };
 }
 
 export interface MetaPredictionMarket {

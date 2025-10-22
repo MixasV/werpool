@@ -1,4 +1,5 @@
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.API_BASE_URL ?? "http://localhost:3333";
 
 export interface AuthOptions {
   token?: string | null;
@@ -71,4 +72,8 @@ export const parseJson = async <T>(response: Response): Promise<T> => {
   }
 
   return (await response.json()) as T;
+};
+
+export const DEFAULT_HEADERS: HeadersInit = {
+  accept: "application/json",
 };

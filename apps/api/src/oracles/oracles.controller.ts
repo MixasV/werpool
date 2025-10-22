@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -20,6 +21,10 @@ import { RequireFlowRoles } from "../auth/flow-roles.decorator";
 import type { FlowSessionPayload } from "../auth/flow-auth.service";
 import { MetaPredictionService } from "./aisports/meta-prediction.service";
 import { MetaTradeRequestDto } from "./aisports/dto/meta-trade.dto";
+import { NBAStatsClient } from "./providers/nba-stats.client";
+import { NFTBoostService } from "../aisports/nft-boost/nft-boost.service";
+import { AiSportsFlowService } from "../flow/aisports-flow.service";
+import type { NBAPlayerStatsDto, NBAGameDto, NBAPlayerDto } from "./dto/nba-stats.dto";
 
 type RequestWithSession = Request & { flowSession?: FlowSessionPayload };
 
@@ -28,7 +33,10 @@ export class OraclesController {
   constructor(
     private readonly cryptoOracle: CryptoOracleService,
     private readonly sportsOracle: SportsOracleService,
-    private readonly metaPrediction: MetaPredictionService
+    private readonly metaPrediction: MetaPredictionService,
+    private readonly nbaStats: NBAStatsClient,
+    private readonly nftBoost: NFTBoostService,
+    private readonly flowService: AiSportsFlowService
   ) {}
 
   @UseGuards(FlowOrApiGuard)
@@ -160,5 +168,120 @@ export class OraclesController {
   async getAiSportsLeaderboard(@Query("limit") limit?: string) {
     const parsedLimit = limit ? Number(limit) : undefined;
     return this.metaPrediction.getLeaderboard(parsedLimit);
+  }
+
+  @Get("nba/games")
+  async getNBAGames(@Query("date") date?: string): Promise<NBAGameDto[]> {
+    const gameDate = date ?? new Date().toISOString().split("T")[0];
+    const games = await this.nbaStats.getGamesByDate(gameDate);
+    
+    return games.map((game) => ({
+      id: game.id,
+      date: game.date,
+      season: game.season,
+      status: game.status,
+      homeTeam: {
+        id: game.homeTeam.id,
+        name: game.homeTeam.name,
+        abbreviation: game.homeTeam.abbreviation,
+        score: game.homeScore,
+      },
+      awayTeam: {
+        id: game.awayTeam.id,
+        name: game.awayTeam.name,
+        abbreviation: game.awayTeam.abbreviation,
+        score: game.awayScore,
+      },
+    }));
+  }
+
+  @Get("nba/players")
+  async searchNBAPlayers(@Query("name") name?: string): Promise<NBAPlayerDto[]> {
+    if (!name) {
+      throw new BadRequestException("name query parameter is required");
+    }
+
+    const players = await this.nbaStats.searchPlayers(name);
+    
+    return players.map((p) => ({
+      id: p.id,
+      firstName: p.firstName,
+      lastName: p.lastName,
+      fullName: `${p.firstName} ${p.lastName}`,
+      position: p.position,
+      jerseyNumber: p.jerseyNumber,
+      team: p.team,
+    }));
+  }
+
+  @Get("nba/stats")
+  async getNBAStats(
+    @Query("date") date?: string,
+    @Query("gameId") gameId?: string
+  ): Promise<NBAPlayerStatsDto[]> {
+    if (gameId) {
+      const parsedGameId = parseInt(gameId, 10);
+      if (isNaN(parsedGameId)) {
+        throw new BadRequestException("gameId must be a valid number");
+      }
+
+      const stats = await this.nbaStats.getGameStats(parsedGameId);
+      return stats.map((stat) => ({
+        playerId: stat.playerId,
+        playerName: stat.playerName,
+        teamName: stat.teamName,
+        teamAbbreviation: stat.teamAbbreviation,
+        gameId: stat.gameId,
+        gameDate: stat.gameDate,
+        minutes: stat.minutes,
+        points: stat.points,
+        rebounds: stat.rebounds,
+        assists: stat.assists,
+        steals: stat.steals,
+        blocks: stat.blocks,
+        turnovers: stat.turnovers,
+        plusMinus: stat.plusMinus,
+        performanceScore: this.nbaStats.calculatePerformanceScore(stat),
+      }));
+    }
+
+    const gameDate = date ?? new Date().toISOString().split("T")[0];
+    const stats = await this.nbaStats.getStatsByDate(gameDate);
+    
+    return stats.map((stat) => ({
+      playerId: stat.playerId,
+      playerName: stat.playerName,
+      teamName: stat.teamName,
+      teamAbbreviation: stat.teamAbbreviation,
+      gameId: stat.gameId,
+      gameDate: stat.gameDate,
+      minutes: stat.minutes,
+      points: stat.points,
+      rebounds: stat.rebounds,
+      assists: stat.assists,
+      steals: stat.steals,
+      blocks: stat.blocks,
+      turnovers: stat.turnovers,
+      plusMinus: stat.plusMinus,
+      performanceScore: this.nbaStats.calculatePerformanceScore(stat),
+    }));
+  }
+
+  @Get("aisports/boost/:address")
+  async getAiSportsBoostInfo(@Param("address") address: string) {
+    const nfts = await this.flowService.getUserNfts(address);
+    const boostInfo = this.nftBoost.calculateBoostInfo(nfts);
+
+    return {
+      address,
+      nftCount: nfts.length,
+      multiplier: boostInfo.multiplier,
+      boost: boostInfo.boost,
+      bestNFT: boostInfo.bestNFT ? {
+        id: boostInfo.bestNFT.id,
+        rarity: boostInfo.bestNFT.rarity,
+        type: boostInfo.bestNFT.type,
+      } : null,
+    };
   }
 }

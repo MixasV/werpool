@@ -23,12 +23,16 @@ export const AppHeader = () => {
     loggedIn,
     isReady,
     network,
+    logIn,
     logOut,
     sessionRoles,
     isAuthenticating,
     sessionError,
   } = useFlowWallet();
   const [isOnboardingOpen, setOnboardingOpen] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
+  const [onboardingTab, setOnboardingTab] = useState<"wallet" | "custodial">("wallet");
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
 
   const isAdmin = sessionRoles.includes("admin");
   const isOperator = sessionRoles.includes("operator");
@@ -41,9 +45,28 @@ export const AppHeader = () => {
       ? "connected"
       : "disconnected";
 
+  const handleConnect = async () => {
+    if (!isReady || isAuthenticating) {
+      return;
+    }
+
+    setConnectError(null);
+    try {
+      await logIn();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not open Flow wallet";
+      setConnectError(message);
+      setOnboardingTab("wallet");
+      setOnboardingError(message);
+      setOnboardingOpen(true);
+    }
+  };
+
   useEffect(() => {
     if (loggedIn) {
       setOnboardingOpen(false);
+      setConnectError(null);
+      setOnboardingError(null);
     }
   }, [loggedIn]);
 
@@ -107,6 +130,9 @@ export const AppHeader = () => {
               {isAuthenticating && (
                 <span className="app-header__status">Awaiting signature…</span>
               )}
+              {connectError && !loggedIn && !isAuthenticating && (
+                <span className="app-header__error">{connectError}</span>
+              )}
               {sessionError && (
                 <span className="app-header__error">{sessionError}</span>
               )}
@@ -123,19 +149,37 @@ export const AppHeader = () => {
               Disconnect
             </button>
           ) : (
-            <button
-              type="button"
-              className="button"
-              disabled={!isReady}
-              onClick={() => setOnboardingOpen(true)}
-            >
-              Connect wallet
-            </button>
+            <div className="app-header__connect">
+              <button
+                type="button"
+                className="button"
+                disabled={!isReady || isAuthenticating}
+                onClick={() => {
+                  void handleConnect();
+                }}
+              >
+                Connect wallet
+              </button>
+              <button
+                type="button"
+                className="link-button"
+                onClick={() => {
+                  setConnectError(null);
+                  setOnboardingError(null);
+                  setOnboardingTab("custodial");
+                  setOnboardingOpen(true);
+                }}
+              >
+                More options
+              </button>
+            </div>
           )}
         </div>
         <OnboardingDialog
           open={isOnboardingOpen}
           onClose={() => setOnboardingOpen(false)}
+          initialTab={onboardingTab}
+          initialError={onboardingError}
         />
       </div>
     </header>

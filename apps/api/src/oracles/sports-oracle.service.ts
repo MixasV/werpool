@@ -1,10 +1,22 @@
 import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import type { OracleSnapshot } from "@prisma/client";
 
+import { resolveSportsDataConfig } from "../common/sports-data.config";
+import { TheSportsDbClient } from "./providers/the-sports-db.client";
+import { SportmonksClient } from "./providers/sportmonks.client";
+import {
+  SportsDataEvent,
+  SportsDataEventStatus,
+  SportsDataPlayerStat,
+  SportsDataProvider,
+  SportsDataScore,
+} from "./providers/types";
+
 import { PrismaService } from "../prisma/prisma.service";
 import { PublishSportsEventRequestDto } from "./dto/publish-sports.dto";
 import { SportsEventDto } from "./dto/sports-event.dto";
 import { signOraclePayload } from "./signing.util";
+import { serializeJson } from "../common/prisma-json.util";
 
 type PublishParams = PublishSportsEventRequestDto & {
   publishedBy?: string | null;
@@ -13,9 +25,26 @@ type PublishParams = PublishSportsEventRequestDto & {
 @Injectable()
 export class SportsOracleService {
   private readonly logger = new Logger(SportsOracleService.name);
-  private readonly signingKey = process.env.ORACLE_SIGNING_KEY ?? "dev-secret";
+  private readonly signingKey: string;
+  private readonly sportsDbClient: TheSportsDbClient;
+  private readonly sportmonksClient: SportmonksClient;
+  private readonly providers: SportsDataProvider[];
+  private readonly statusPriority: SportsDataEventStatus[] = [
+    "final",
+    "completed",
+    "live",
+    "scheduled",
+    "canceled",
+    "unknown",
+  ];
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    this.signingKey = this.resolveSigningKey();
+    const sportsConfig = resolveSportsDataConfig();
+    this.sportsDbClient = new TheSportsDbClient(sportsConfig);
+    this.sportmonksClient = new SportmonksClient(sportsConfig);
+    this.providers = [this.sportsDbClient, this.sportmonksClient];
+  }
 
   async publishEvent(params: PublishParams): Promise<SportsEventDto> {
     const eventId = this.normalizeEventId(params.eventId);
@@ -24,7 +53,7 @@ export class SportsOracleService {
 
     const metadata = await this.buildMetadata(params);
 
-    const payload = {
+    const payload = serializeJson({
       type: "sports.event",
       eventId,
       source: params.source,
@@ -42,7 +71,7 @@ export class SportsOracleService {
         : null,
       metadata,
       updatedAt: nowIso,
-    } as const;
+    });
 
     const signature = signOraclePayload(payload, this.signingKey);
 
@@ -113,6 +142,67 @@ export class SportsOracleService {
     return snapshots.map((snapshot) => this.toDto(snapshot));
   }
 
+  async fetchUpcomingEvents(leagueId: string, limit = 20): Promise<SportsDataEvent[]> {
+    const events: SportsDataEvent[] = [];
+
+    if (this.sportsDbClient.isEnabled) {
+      try {
+        const upcoming = await this.sportsDbClient.fetchUpcomingEvents(leagueId, limit);
+        events.push(...upcoming);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`TheSportsDB upcoming events error: ${message}`);
+      }
+    }
+
+    return this.deduplicateEvents(events).slice(0, limit);
+  }
+
+  async syncEventFromProviders(eventId: string, options: { publishedBy?: string | null } = {}): Promise<SportsEventDto | null> {
+    const normalizedId = this.normalizeEventId(eventId);
+    const providerEvents: SportsDataEvent[] = [];
+
+    for (const provider of this.providers) {
+      if (!provider.isEnabled) {
+        continue;
+      }
+      const result = await provider.fetchEvent(normalizedId);
+      if (result) {
+        providerEvents.push(result);
+      }
+    }
+
+    if (providerEvents.length === 0) {
+      this.logger.warn(`No sports data providers returned event ${normalizedId}`);
+      return null;
+    }
+
+    const aggregated = this.aggregateProviderEvents(providerEvents);
+
+    const normalizedStatus = this.normalizeStatusForPublish(aggregated.status);
+
+    const publishParams: PublishParams = {
+      eventId: normalizedId,
+      status: normalizedStatus,
+      source: aggregated.source,
+      sport: aggregated.sport,
+      league: aggregated.league,
+      startsAt: aggregated.startsAt,
+      headline: aggregated.headline,
+      score: aggregated.score
+        ? {
+            home: aggregated.score.home,
+            away: aggregated.score.away,
+            period: aggregated.score.period,
+          }
+        : undefined,
+      metadata: aggregated.metadata,
+      publishedBy: options.publishedBy ?? null,
+    } satisfies PublishParams;
+
+    return this.publishEvent(publishParams);
+  }
+
   private toDto(snapshot: OracleSnapshot): SportsEventDto {
     const payload = this.parsePayload(snapshot.payload);
     const eventId = (payload.eventId as string | undefined) ?? snapshot.eventId ?? "";
@@ -141,9 +231,165 @@ export class SportsOracleService {
     return payload as Record<string, unknown>;
   }
 
+  private deduplicateEvents(events: SportsDataEvent[]): SportsDataEvent[] {
+    const seen = new Map<string, SportsDataEvent>();
+    for (const event of events) {
+      const key = this.normalizeEventId(event.eventId ?? "");
+      if (!key || seen.has(key)) {
+        continue;
+      }
+      seen.set(key, event);
+    }
+    return Array.from(seen.values());
+  }
+
+  private aggregateProviderEvents(events: SportsDataEvent[]) {
+    const sorted = [...events].sort((a, b) => this.statusPriorityIndex(a.status) - this.statusPriorityIndex(b.status));
+    const primary = sorted[0];
+    const consensusScore = this.resolveConsensusScore(events.map((entry) => entry.score).filter(Boolean) as SportsDataScore[]);
+    const metadataSources = events.map((entry) => ({
+      provider: entry.source,
+      status: entry.status,
+      startsAt: entry.startsAt,
+      score: entry.score ?? null,
+      metadata: entry.metadata ?? null,
+    }));
+
+    const metadata: Record<string, unknown> = {
+      sources: metadataSources,
+    };
+
+    if (events.some((entry) => entry.status !== primary.status)) {
+      metadata.statusDisagreement = true;
+    }
+    if (events.some((entry) => !this.scoresEqual(entry.score, primary.score))) {
+      metadata.scoreDisagreement = true;
+    }
+
+    const players = this.mergePlayerStats(events);
+    if (players.length > 0) {
+      metadata.players = players;
+    }
+
+    return {
+      eventId: primary.eventId,
+      status: primary.status,
+      sport: primary.sport ?? events.find((entry) => entry.sport)?.sport,
+      league: primary.league ?? events.find((entry) => entry.league)?.league,
+      startsAt: primary.startsAt ?? events.find((entry) => entry.startsAt)?.startsAt,
+      headline: primary.headline ?? events.find((entry) => entry.headline)?.headline,
+      score: consensusScore ?? primary.score,
+      source: "aggregated:sports-data",
+      metadata,
+      players,
+    } satisfies SportsDataEvent;
+  }
+
+  private mergePlayerStats(events: SportsDataEvent[]): SportsDataPlayerStat[] {
+    const merged = new Map<string, SportsDataPlayerStat>();
+
+    for (const event of events) {
+      if (!Array.isArray(event.players)) {
+        continue;
+      }
+      for (const player of event.players) {
+        if (!player || typeof player.playerId !== "string") {
+          continue;
+        }
+        const key = player.playerId;
+        const existing = merged.get(key);
+        if (!existing) {
+          merged.set(key, { ...player });
+          continue;
+        }
+
+        merged.set(key, {
+          ...existing,
+          playerName: existing.playerName ?? player.playerName,
+          teamId: existing.teamId ?? player.teamId,
+          teamName: existing.teamName ?? player.teamName,
+          position: existing.position ?? player.position,
+          jerseyNumber: existing.jerseyNumber ?? player.jerseyNumber,
+          minutes: this.resolveStatValue(existing.minutes, player.minutes),
+          points: this.resolveStatValue(existing.points, player.points),
+          rebounds: this.resolveStatValue(existing.rebounds, player.rebounds),
+          assists: this.resolveStatValue(existing.assists, player.assists),
+          steals: this.resolveStatValue(existing.steals, player.steals),
+          blocks: this.resolveStatValue(existing.blocks, player.blocks),
+          plusMinus: this.resolveStatValue(existing.plusMinus, player.plusMinus),
+          turnovers: this.resolveStatValue(existing.turnovers, player.turnovers),
+          fouls: this.resolveStatValue(existing.fouls, player.fouls),
+          metadata: {
+            ...(existing.metadata ?? {}),
+            ...(player.metadata ?? {}),
+          },
+        });
+      }
+    }
+
+    return Array.from(merged.values());
+  }
+
+  private resolveStatValue(a?: number, b?: number): number | undefined {
+    if (typeof b === "number" && Number.isFinite(b)) {
+      return b;
+    }
+    if (typeof a === "number" && Number.isFinite(a)) {
+      return a;
+    }
+    return undefined;
+  }
+
+  private resolveConsensusScore(scores: SportsDataScore[]): SportsDataScore | undefined {
+    if (scores.length === 0) {
+      return undefined;
+    }
+
+    const normalized = scores.map((score) => ({
+      home: score.home,
+      away: score.away,
+      period: score.period,
+    }));
+
+    const first = normalized[0];
+    const allEqual = normalized.every((score) => score.home === first.home && score.away === first.away);
+
+    if (allEqual) {
+      return first;
+    }
+
+    const finalized = normalized.find((score) => typeof score.home === "number" && typeof score.away === "number");
+    return finalized ?? undefined;
+  }
+
+  private scoresEqual(a?: SportsDataScore, b?: SportsDataScore): boolean {
+    if (!a && !b) {
+      return true;
+    }
+    if (!a || !b) {
+      return false;
+    }
+    return a.home === b.home && a.away === b.away;
+  }
+
+  private statusPriorityIndex(status: SportsDataEventStatus): number {
+    const index = this.statusPriority.indexOf(status);
+    return index >= 0 ? index : this.statusPriority.length;
+  }
+
+  private normalizeStatusForPublish(status: SportsDataEventStatus): "scheduled" | "live" | "final" | "canceled" {
+    if (status === "completed") {
+      return "final";
+    }
+    if (status === "unknown") {
+      return "scheduled";
+    }
+    return status as "scheduled" | "live" | "final" | "canceled";
+  }
+
   private normalizeEventId(value: string): string {
     if (typeof value !== "string" || value.trim().length === 0) {
-      throw new ServiceUnavailableException("eventId обязателен");
+      throw new ServiceUnavailableException("eventId is required");
     }
     return value.trim();
   }
@@ -153,11 +399,14 @@ export class SportsOracleService {
     switch (normalized) {
       case "scheduled":
       case "live":
+        return normalized;
       case "final":
+      case "completed":
+        return "final";
       case "canceled":
         return normalized;
       default:
-        this.logger.warn(`Неизвестный статус события ${value}, сохраняем как 'unknown'`);
+        this.logger.warn(`Unknown event status ${value}; storing as 'unknown'`);
         return "unknown";
     }
   }
@@ -186,8 +435,8 @@ export class SportsOracleService {
 
   private async fetchTopShotMetadata(playId: string): Promise<Record<string, unknown> | null> {
     try {
-      // В рабочем окружении здесь можно выполнить GraphQL запрос к NBA TopShot.
-      // Для оффлайн-режима возвращаем предопределённые данные, основанные на playId.
+    // In production we could issue a GraphQL query to NBA TopShot.
+    // For offline mode we return predefined data based on playId.
       return {
         playId,
         title: `TopShot Highlight #${playId}`,
@@ -200,9 +449,19 @@ export class SportsOracleService {
       };
     } catch (error) {
       this.logger.warn(
-        `Не удалось получить данные TopShot для ${playId}: ${(error as Error).message}`
+        `Failed to fetch TopShot data for ${playId}: ${(error as Error).message}`
       );
       return null;
     }
+  }
+
+  private resolveSigningKey(): string {
+    const key = process.env.ORACLE_SIGNING_KEY?.trim();
+    if (!key) {
+      throw new Error(
+        "ORACLE_SIGNING_KEY environment variable is required for oracle signing"
+      );
+    }
+    return key;
   }
 }

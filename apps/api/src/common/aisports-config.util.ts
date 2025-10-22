@@ -46,9 +46,9 @@ const PRESETS: Record<AiSportsNetwork, AiSportsPreset> = {
     accessNode: "https://rest-testnet.onflow.org",
     discoveryWallet: "https://fcl-discovery.onflow.org/testnet/authn",
     contracts: {
-      minter: "0xabe5a2bf47ce5bf3",
-      juice: "0x9db94c9564243ba7",
-      escrow: "0x4fdb077419808080",
+      minter: "0xf8ba321af4bd37bb",   // All aiSports contracts on testnet
+      juice: "0xf8ba321af4bd37bb",    // Same address for all testnet contracts
+      escrow: "0xf8ba321af4bd37bb",   // Same address for all testnet contracts
     },
   },
   mainnet: {
@@ -56,9 +56,9 @@ const PRESETS: Record<AiSportsNetwork, AiSportsPreset> = {
     accessNode: "https://rest-mainnet.onflow.org",
     discoveryWallet: "https://fcl-discovery.onflow.org/mainnet/authn",
     contracts: {
-      minter: "0x0000000000000000",
-      juice: "0x0000000000000000",
-      escrow: "0x0000000000000000",
+      minter: "0xabe5a2bf47ce5bf3",  // aiSportsMinter mainnet
+      juice: "0x9db94c9564243ba7",    // aiSportsJuice mainnet
+      escrow: "0x4fdb077419808080",   // aiSportsEscrow mainnet
     },
   },
 };

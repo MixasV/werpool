@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "updatedAt": "2025-10-20T23:49:37.989Z",
+  "markets": [
+    {
+      "id": "aisports:avg-score:45:1761004177803",
+      "title": "Средний fantasy score превысит 45?",
+      "description": "Текущее значение: 0.0. Данные предоставлены aiSports Escrow",
+      "category": "aiSports_Meta",
+      "type": "yes_no",
+      "resolutionTime": "2025-10-21T23:49:37.803Z",
+      "createdAt": "2025-10-20T23:49:37.803Z",
+      "isActive": true,
+      "isResolved": false,
+      "outcome": null,
+      "oracleConfig": {
+        "dataSource": "aiSports.tournament.averageScore",
+        "targetValue": 45,
+        "comparisonType": "greater_than",
+        "resolutionFunction": "resolveAverageScoreMarket"
+      },
+      "currentData": {
+        "value": 0,
+        "participants": 0,
+        "timeRemaining": "24h",
+        "lastUpdate": "2025-10-20T23:49:37.803Z"
+      },
+      "accessRequirements": {
+        "requiresActiveParticipation": true
+      },
+      "poolState": {
+        "liquidityParameter": 120,
+        "bVector": [
+          0,
+          0
+        ],
+        "outcomeSupply": [
+          0,
+          0
+        ],
+        "totalLiquidity": 0
+      },
+      "tradeVolume": 0,
+      "tradeCount": 0,
+      "yesPrice": 0.5,
+      "noPrice": 0.5,
+      "lastTradeAt": null
+    },
+    {
+      "id": "aisports:community:participants:1761004177987",
+      "title": "Количество участников превысит 200?",
+      "description": "Текущее значение: 0. Обновление каждые 24 часа",
+      "category": "aiSports_Community",
+      "type": "yes_no",
+      "resolutionTime": "2025-10-21T23:49:37.987Z",
+      "createdAt": "2025-10-20T23:49:37.987Z",
+      "isActive": true,
+      "isResolved": false,
+      "outcome": null,
+      "oracleConfig": {
+        "dataSource": "aiSports.community.participants",
+        "targetValue": 200,
+        "comparisonType": "greater_than",
+        "resolutionFunction": "resolveCommunityMarket"
+      },
+      "currentData": {
+        "value": 0,
+        "participants": 0,
+        "timeRemaining": "24h",
+        "lastUpdate": "2025-10-20T23:49:37.987Z"
+      },
+      "accessRequirements": {},
+      "poolState": {
+        "liquidityParameter": 120,
+        "bVector": [
+          0,
+          0
+        ],
+        "outcomeSupply": [
+          0,
+          0
+        ],
+        "totalLiquidity": 0
+      },
+      "tradeVolume": 0,
+      "tradeCount": 0,
+      "yesPrice": 0.5,
+      "noPrice": 0.5,
+      "lastTradeAt": null
+    },
+    {
+      "id": "aisports:nft-performance:1761004177989",
+      "title": "Редкие aiSports NFT дадут преимущество сегодня?",
+      "description": "Сравнение средних fantasy очков владельцев Epic/Legendary против остальных",
+      "category": "aiSports_NFT",
+      "type": "yes_no",
+      "resolutionTime": "2025-10-21T23:49:37.989Z",
+      "createdAt": "2025-10-20T23:49:37.989Z",
+      "isActive": true,
+      "isResolved": false,
+      "outcome": null,
+      "oracleConfig": {
+        "dataSource": "aiSports.nft.performance",
+        "comparisonType": "greater_than",
+        "resolutionFunction": "resolveNftPerformanceMarket"
+      },
+      "currentData": {
+        "value": 0,
+        "timeRemaining": "24h",
+        "lastUpdate": "2025-10-20T23:49:37.989Z"
+      },
+      "accessRequirements": {
+        "requiredNftRarity": [
+          "Common",
+          "Uncommon",
+          "Rare",
+          "Epic",
+          "Legendary"
+        ]
+      },
+      "poolState": {
+        "liquidityParameter": 120,
+        "bVector": [
+          0,
+          0
+        ],
+        "outcomeSupply": [
+          0,
+          0
+        ],
+        "totalLiquidity": 0
+      },
+      "tradeVolume": 0,
+      "tradeCount": 0,
+      "yesPrice": 0.5,
+      "noPrice": 0.5,
+      "lastTradeAt": null
+    }
+  ],
+  "trades": {
+    "aisports:avg-score:45:1761004177803": [],
+    "aisports:community:participants:1761004177987": [],
+    "aisports:nft-performance:1761004177989": []
+  }
+}

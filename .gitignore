@@ -17,6 +17,11 @@ out/
 .env.local
 .env.production.local
 .env.development.local
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
 
 # OS files
 .DS_Store
@@ -57,6 +62,10 @@ prisma/*.db-journal
 tmp/
 temp/
 *.tmp
+backups/
+
+# Deployment configs with secrets
+ecosystem.config.js
 
 # Documentation (exclude all .md except README.md)
 *.md

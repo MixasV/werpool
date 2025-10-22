@@ -15,6 +15,7 @@ import {
   MarketTrade as PrismaMarketTrade,
   MarketTransactionLog as PrismaMarketTransactionLog,
   MarketState as PrismaMarketState,
+  MomentLockStatus as PrismaMomentLockStatus,
   Outcome as PrismaOutcome,
   OutcomeStatus as PrismaOutcomeStatus,
   PatrolSignal as PrismaPatrolSignal,
@@ -82,6 +83,10 @@ import { MarketAnalyticsService } from "./market-analytics.service";
 import { MarketPoolStateService } from "./market-pool-state.service";
 import { SchedulerService } from "../scheduler/scheduler.service";
 import { PointsService } from "../points/points.service";
+import { TopShotLockService } from "../topshot/topshot-lock.service";
+import { TopShotService } from "../topshot/topshot.service";
+import { TopShotRewardService } from "../topshot/topshot-reward.service";
+import { TopShotProjectedBonus, TopShotMomentLockDto } from "../topshot/topshot.types";
 
 type PrismaMarketWithRelations = PrismaMarket & {
   liquidityPool: PrismaLiquidityPool | null;
@@ -319,6 +324,10 @@ const toDomainMarket = (market: PrismaMarketWithRelations): Market => ({
   patrolSignals: market.patrolSignals.map(toDomainPatrolSignal),
 });
 
+const MAX_USER_POSITION_PER_MARKET = 1000;
+const DEFAULT_LIQUIDITY_PARAMETER = 2000;
+const DEFAULT_SEED_AMOUNT = 50000;
+
 @Injectable()
 export class MarketsService {
   private readonly logger = new Logger(MarketsService.name);
@@ -353,7 +362,10 @@ export class MarketsService {
     private readonly analyticsService: MarketAnalyticsService,
     private readonly schedulerService: SchedulerService,
     private readonly pointsService: PointsService,
-    private readonly updatesGateway: MarketUpdatesGateway
+    private readonly updatesGateway: MarketUpdatesGateway,
+    private readonly topShotLockService: TopShotLockService,
+    private readonly topShotService: TopShotService,
+    private readonly topShotRewardService: TopShotRewardService
   ) {}
 
   async findAll(): Promise<Market[]> {
@@ -1452,6 +1464,31 @@ export class MarketsService {
       }
     );
 
+    if (marketRecord.category === PrismaMarketCategory.SPORTS) {
+      const eventId = this.extractEventIdFromTags(updated.tags ?? []);
+      if (eventId) {
+        const resolvedOutcome = updated.outcomes.find((o) => o.id === resolvedOutcomeId);
+        const resolvedOutcomeIndex = resolvedOutcome
+          ? updated.outcomes.indexOf(resolvedOutcome)
+          : -1;
+        
+        if (resolvedOutcomeIndex >= 0) {
+          try {
+            await this.topShotRewardService.processSettlement({
+              marketId: marketRecord.id,
+              eventId,
+              resolvedOutcomeId,
+              outcomeIndex: resolvedOutcomeIndex,
+            });
+          } catch (error) {
+            this.logger.error(
+              `Top Shot reward processing failed for market ${marketRecord.id}: ${(error as Error).message}`
+            );
+          }
+        }
+      }
+    }
+
     return result;
   }
 
@@ -1738,6 +1775,25 @@ export class MarketsService {
       createdBy: signer,
     });
 
+    try {
+      this.logger.log(`Auto-creating liquidity pool for market ${market.id} with ${payload.outcomes.length} outcomes`);
+      
+      await this.createPool(market.id, {
+        outcomeCount: payload.outcomes.length,
+        liquidityParameter: DEFAULT_LIQUIDITY_PARAMETER,
+        seedAmount: DEFAULT_SEED_AMOUNT,
+        signer,
+        network,
+      });
+
+      this.logger.log(`Successfully created liquidity pool for market ${market.id}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to auto-create liquidity pool for market ${market.id}: ${(error as Error).message}`,
+        (error as Error).stack
+      );
+    }
+
     return toDomainMarket(market);
   }
 
@@ -1949,7 +2005,7 @@ export class MarketsService {
       marketRecord,
     });
 
-    return {
+    const response: QuoteTradeResponseDto = {
       flowAmount: calculated.flowAmount,
       outcomeAmount: calculated.outcomeAmount,
       newBVector: calculated.newBVector,
@@ -1959,6 +2015,26 @@ export class MarketsService {
       cadenceArguments: calculated.cadenceArguments,
       transactionPath: this.tradeTransactionPath,
     };
+
+    if (request.isBuy && payload.signer) {
+      try {
+        const userAddress = normalizeFlowAddress(payload.signer);
+        const currentPosition = await this.getUserCurrentPosition(marketRecord.id, userAddress);
+        const proposedAmount = Number(calculated.flowAmount);
+        const newPosition = currentPosition + proposedAmount;
+
+        response.userPositionInfo = {
+          currentPosition: Math.round(currentPosition * 100) / 100,
+          maxPosition: MAX_USER_POSITION_PER_MARKET,
+          remainingCapacity: Math.round((MAX_USER_POSITION_PER_MARKET - currentPosition) * 100) / 100,
+          wouldExceedLimit: newPosition > MAX_USER_POSITION_PER_MARKET,
+        };
+      } catch (error) {
+        this.logger.warn(`Failed to calculate position info: ${(error as Error).message}`);
+      }
+    }
+
+    return response;
   }
 
   async executeTrade(
@@ -1985,15 +2061,76 @@ export class MarketsService {
       throw new BadRequestException("Flow amount exceeds maxFlowAmount tolerance");
     }
 
-    const signer = payload.signer ?? process.env.FLOW_TRANSACTION_SIGNER ?? "emulator-account";
+    if (request.isBuy && payload.signer) {
+      const userAddress = normalizeFlowAddress(payload.signer);
+      const currentPosition = await this.getUserCurrentPosition(market.id, userAddress);
+      const newPosition = currentPosition + calculated.quote.flowAmount;
+      
+      if (newPosition > MAX_USER_POSITION_PER_MARKET) {
+        throw new BadRequestException(
+          `Position limit exceeded. Your current position: ${currentPosition.toFixed(2)} FLOW. ` +
+          `Maximum allowed: ${MAX_USER_POSITION_PER_MARKET} FLOW. ` +
+          `This trade would result in: ${newPosition.toFixed(2)} FLOW.`
+        );
+      }
+    }
+
+    const userSigner = payload.signer;
+    const signer = userSigner ?? process.env.FLOW_TRANSACTION_SIGNER ?? "emulator-account";
     const network = payload.network ?? process.env.FLOW_NETWORK ?? "emulator";
 
-    const transaction = await this.flowTransactionService.send({
-      transactionPath: this.tradeTransactionPath,
-      arguments: calculated.cadenceArguments,
-      signer,
-      network,
-    });
+    const topShotSelection = Object.prototype.hasOwnProperty.call(payload, "topShotSelection")
+      ? payload.topShotSelection ?? null
+      : undefined;
+
+    let lockedMomentId: string | null = null;
+    let topShotAddress: string | null = null;
+
+    if (topShotSelection !== undefined) {
+      if (!userSigner) {
+        throw new BadRequestException("Signer address is required for Top Shot selections");
+      }
+      topShotAddress = normalizeFlowAddress(userSigner, "signer");
+
+      if (market.category !== PrismaMarketCategory.SPORTS) {
+        throw new BadRequestException("Top Shot bonuses are available only for sports markets");
+      }
+
+      if (!request.isBuy && topShotSelection !== null) {
+        throw new BadRequestException("Top Shot bonus requires a buy trade on the selected outcome");
+      }
+
+      if (topShotSelection === null) {
+        await this.topShotLockService.releaseLock(market.id, topShotAddress, PrismaMomentLockStatus.CANCELLED);
+      } else if (topShotSelection.momentId) {
+        if (!this.topShotService.isEnabled()) {
+          throw new BadRequestException("Top Shot integration is currently disabled");
+        }
+        const lock = await this.topShotLockService.lockMoment({
+          marketId: market.id,
+          outcomeIndex: request.outcomeIndex,
+          userAddress: topShotAddress,
+          momentId: topShotSelection.momentId,
+          estimatedReward: topShotSelection.estimatedReward,
+        });
+        lockedMomentId = lock.momentId;
+      }
+    }
+
+    let transaction;
+    try {
+      transaction = await this.flowTransactionService.send({
+        transactionPath: this.tradeTransactionPath,
+        arguments: calculated.cadenceArguments,
+        signer,
+        network,
+      });
+    } catch (error) {
+      if (lockedMomentId && topShotAddress) {
+        await this.topShotLockService.releaseLock(market.id, topShotAddress, PrismaMomentLockStatus.CANCELLED);
+      }
+      throw error;
+    }
 
     const updatedState = await this.poolStateService.applyQuote(
       parsedMarketId,
@@ -2137,6 +2274,58 @@ export class MarketsService {
     } satisfies ClaimRewardsResponseDto;
   }
 
+  async listTopShotOptions(
+    marketId: string,
+    userAddress: string,
+    outcomeIndex: number
+  ): Promise<TopShotProjectedBonus[]> {
+    if (!this.topShotService.isEnabled()) {
+      return [];
+    }
+
+    const parsedMarketId = this.parseMarketId(marketId);
+    const marketRecord = await this.getMarketRecord(parsedMarketId);
+    if (marketRecord.category !== PrismaMarketCategory.SPORTS) {
+      return [];
+    }
+
+    const outcome = marketRecord.outcomes[outcomeIndex];
+    if (!outcome) {
+      throw new BadRequestException("Outcome index is out of bounds");
+    }
+
+    const outcomeType = this.extractOutcomeType(outcome.metadata);
+    if (outcomeType !== "home" && outcomeType !== "away") {
+      return [];
+    }
+
+    const eventId = this.extractEventIdFromTags(marketRecord.tags ?? []);
+    if (!eventId) {
+      return [];
+    }
+
+    const normalizedAddress = normalizeFlowAddress(userAddress, "address");
+    const moments = await this.topShotService.getOwnerMoments(normalizedAddress, { limit: 200 });
+
+    const projected = moments.map((moment) =>
+      this.topShotLockService.buildProjectedBonus(moment, {
+        marketId: marketRecord.id,
+        eventId,
+        outcomeType,
+        outcomeIndex,
+      })
+    );
+
+    return projected.sort((a, b) => (b.projectedPoints ?? 0) - (a.projectedPoints ?? 0));
+  }
+
+  async getTopShotLock(marketId: string, userAddress: string): Promise<TopShotMomentLockDto | null> {
+    const parsedMarketId = this.parseMarketId(marketId);
+    const marketRecord = await this.getMarketRecord(parsedMarketId);
+    const normalizedAddress = normalizeFlowAddress(userAddress, "address");
+    return this.topShotLockService.getActiveLock(marketRecord.id, normalizedAddress);
+  }
+
   private async calculateTradeQuote(
     marketId: number,
     request: QuoteTradeRequestDto,
@@ -2243,6 +2432,30 @@ export class MarketsService {
 
   private formatUFix64(value: number): string {
     return value.toFixed(8);
+  }
+
+  private extractEventIdFromTags(tags: string[]): string | null {
+    for (const tag of tags) {
+      if (tag.startsWith("event:")) {
+        const [, eventId] = tag.split(":");
+        if (eventId) {
+          return eventId;
+        }
+      }
+    }
+    return null;
+  }
+
+  private extractOutcomeType(metadata: Prisma.JsonValue): "home" | "away" | "draw" | "cancel" | "unknown" {
+    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+      return "unknown";
+    }
+    const record = metadata as Record<string, unknown>;
+    const value = typeof record.type === "string" ? record.type.toLowerCase() : "unknown";
+    if (value === "home" || value === "away" || value === "draw" || value === "cancel") {
+      return value;
+    }
+    return "unknown";
   }
 
   private formatTimestamp(value?: Date | null): string | undefined {
@@ -2582,9 +2795,19 @@ export class MarketsService {
     signer?: string,
     network?: string
   ): { signer: string; network: string } {
+    const resolvedNetwork = network ?? process.env.FLOW_NETWORK ?? "emulator";
+    const resolvedSigner =
+      signer ?? process.env.FLOW_TRANSACTION_SIGNER ?? (resolvedNetwork === "emulator" ? "emulator-account" : undefined);
+
+    if (!resolvedSigner) {
+      throw new BadRequestException(
+        "FLOW_TRANSACTION_SIGNER must be configured for non-emulator networks"
+      );
+    }
+
     return {
-      signer: signer ?? process.env.FLOW_TRANSACTION_SIGNER ?? "emulator-account",
-      network: network ?? process.env.FLOW_NETWORK ?? "emulator",
+      signer: resolvedSigner,
+      network: resolvedNetwork,
     };
   }
 
@@ -2615,6 +2838,33 @@ export class MarketsService {
     }
 
     return trimmed;
+  }
+
+  private async getUserCurrentPosition(marketId: string, userAddress: string): Promise<number> {
+    const trades = await this.prisma.marketTrade.findMany({
+      where: {
+        marketId,
+        signer: userAddress.toLowerCase(),
+      },
+      select: {
+        flowAmount: true,
+        isBuy: true,
+      },
+    });
+
+    let totalBuy = 0;
+    let totalSell = 0;
+
+    for (const trade of trades) {
+      const amount = Number(trade.flowAmount);
+      if (trade.isBuy) {
+        totalBuy += amount;
+      } else {
+        totalSell += amount;
+      }
+    }
+
+    return totalBuy - totalSell;
   }
 
   private async broadcastPoolState(

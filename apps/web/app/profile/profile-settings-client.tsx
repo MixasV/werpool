@@ -11,10 +11,16 @@ import {
   type ProfileVisibility,
   type TradeHistoryVisibility,
 } from "../lib/users-api";
+import {
+  fetchMyRolePurchaseRequests,
+  requestRolePurchase,
+  type RolePurchaseRequest,
+} from "../lib/roles-api";
 
 interface ProfileSettingsClientProps {
   initialProfile: UserProfile;
-  points: number;
+  initialPoints: number;
+  initialRolePurchases: RolePurchaseRequest[];
 }
 
 interface BadgeDescriptor {
@@ -71,7 +77,18 @@ const computeBadges = (points: number, roles: UserProfile["roles"]): BadgeDescri
   return badges;
 };
 
-export const ProfileSettingsClient = ({ initialProfile, points }: ProfileSettingsClientProps) => {
+const rolePurchaseStatusLabels: Record<RolePurchaseRequest["status"], string> = {
+  PENDING: "Pending",
+  APPROVED: "Approved",
+  DECLINED: "Declined",
+  COMPLETED: "Completed",
+};
+
+export const ProfileSettingsClient = ({
+  initialProfile,
+  initialPoints,
+  initialRolePurchases,
+}: ProfileSettingsClientProps) => {
   const [profile, setProfile] = useState<UserProfile>(initialProfile);
   const [label, setLabel] = useState(initialProfile.label ?? "");
   const [bio, setBio] = useState(initialProfile.bio ?? "");
@@ -85,8 +102,23 @@ export const ProfileSettingsClient = ({ initialProfile, points }: ProfileSetting
   const [emailToken, setEmailToken] = useState<string | null>(
     initialProfile.pendingEmailVerification ? "" : null
   );
+  const [currentPoints, setCurrentPoints] = useState(initialPoints);
+  const [roleRequests, setRoleRequests] = useState<RolePurchaseRequest[]>(initialRolePurchases);
+  const [isRoleActionPending, setRoleActionPending] = useState(false);
 
-  const badges = useMemo(() => computeBadges(points, profile.roles), [points, profile.roles]);
+  const badges = useMemo(() => computeBadges(currentPoints, profile.roles), [currentPoints, profile.roles]);
+  const hasPatrolRole = useMemo(
+    () => profile.roles.some((assignment) => assignment.role === "patrol"),
+    [profile.roles]
+  );
+  const hasActivePatrolRequest = useMemo(
+    () =>
+      roleRequests.some(
+        (request) => request.status === "PENDING" || request.status === "APPROVED"
+      ),
+    [roleRequests]
+  );
+  const canRequestPatrol = currentPoints >= 20000 && !hasPatrolRole && !hasActivePatrolRequest;
 
   const resetMessages = () => {
     setStatus(null);
@@ -140,6 +172,52 @@ export const ProfileSettingsClient = ({ initialProfile, points }: ProfileSetting
       setError(message);
     } finally {
       setPending(false);
+    }
+  };
+
+  const handleRequestPatrol = async () => {
+    resetMessages();
+    if (hasPatrolRole) {
+      setError("PATROL role already assigned");
+      return;
+    }
+    if (hasActivePatrolRequest) {
+      setError("Existing PATROL request is still in progress");
+      return;
+    }
+    if (currentPoints < 20000) {
+      setError("You need at least 20,000 points");
+      return;
+    }
+
+    setRoleActionPending(true);
+    try {
+      const request = await requestRolePurchase();
+      setRoleRequests((prev) => [request, ...prev]);
+      setCurrentPoints((value) => Math.max(0, value - 20000));
+      setStatus("PATROL role request submitted");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not submit PATROL role request";
+      setError(message);
+    } finally {
+      setRoleActionPending(false);
+    }
+  };
+
+  const handleRefreshRoleRequests = async () => {
+    resetMessages();
+    setRoleActionPending(true);
+    try {
+      const requests = await fetchMyRolePurchaseRequests();
+      setRoleRequests(requests);
+      setStatus("Role purchase requests refreshed");
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not refresh role purchase requests";
+      setError(message);
+    } finally {
+      setRoleActionPending(false);
     }
   };
 
@@ -359,6 +437,67 @@ export const ProfileSettingsClient = ({ initialProfile, points }: ProfileSetting
                   <li key={badge.id} className={`badge badge--${badge.tone}`}>
                     <span className="badge__label">{badge.label}</span>
                     <span className="badge__description">{badge.description}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="profile-section" aria-labelledby="patrol-role">
+        <div className="profile-section__header">
+          <h2 id="patrol-role">Unlock PATROL role</h2>
+          <p>Spend 20,000 points to submit a PATROL role request. Admins review requests before approval.</p>
+        </div>
+        <div className="profile-role-purchase">
+          <div className="profile-role-purchase__actions">
+            <p className="profile-muted">
+              Available points: {currentPoints.toLocaleString("en-US")} · Cost: 20,000 points
+            </p>
+            <div className="profile-role-purchase__buttons">
+              <button
+                type="button"
+                className="button"
+                onClick={handleRequestPatrol}
+                disabled={!canRequestPatrol || isRoleActionPending || pending}
+              >
+                {isRoleActionPending ? "Working…" : "Request PATROL role"}
+              </button>
+              <button
+                type="button"
+                className="button tertiary"
+                onClick={handleRefreshRoleRequests}
+                disabled={isRoleActionPending}
+              >
+                Refresh status
+              </button>
+            </div>
+            {hasActivePatrolRequest && (
+              <p className="profile-muted">A PATROL request is currently awaiting review.</p>
+            )}
+            {hasPatrolRole && <p className="profile-muted">PATROL role already granted.</p>}
+          </div>
+          <div className="profile-role-purchase__history">
+            <h3>Request history</h3>
+            {roleRequests.length === 0 ? (
+              <p className="profile-muted">No PATROL requests yet.</p>
+            ) : (
+              <ul>
+                {roleRequests.map((request) => (
+                  <li key={request.id}>
+                    <div className="profile-role-purchase__item">
+                      <span className="profile-role-purchase__status">
+                        {rolePurchaseStatusLabels[request.status]}
+                      </span>
+                      <time dateTime={request.createdAt}>
+                        {new Date(request.createdAt).toLocaleString("en-US")}
+                      </time>
+                    </div>
+                    <p className="profile-muted">
+                      Spent {request.pointsSpent.toLocaleString("en-US")} points
+                    </p>
+                    {request.notes && <p className="profile-note">{request.notes}</p>}
                   </li>
                 ))}
               </ul>

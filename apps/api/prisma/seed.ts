@@ -1,15 +1,77 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+import {
+  Prisma,
+  PrismaClient,
+  MarketState,
+  MarketCategory,
+  OutcomeStatus,
+  WorkflowActionType,
+  WorkflowActionStatus,
+  PatrolSignalSeverity,
+  RoleType,
+} from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 const decimal = (value: number): Prisma.Decimal => new Prisma.Decimal(value);
 
+const normalizeAddress = (value: string): string => {
+  const trimmed = value.trim().toLowerCase();
+  if (trimmed.startsWith("0x")) {
+    return trimmed;
+  }
+  return `0x${trimmed}`;
+};
+
+async function ensureAdminRole(address: string, label?: string | null): Promise<void> {
+  const normalized = normalizeAddress(address);
+  const now = new Date();
+
+  await prisma.flowUser.upsert({
+    where: { address: normalized },
+    update: {
+      lastSeenAt: now,
+      ...(label ? { label } : {}),
+    },
+    create: {
+      address: normalized,
+      firstSeenAt: now,
+      lastSeenAt: now,
+      ...(label ? { label } : {}),
+    },
+  });
+
+  await prisma.roleAssignment.upsert({
+    where: {
+      address_role: {
+        address: normalized,
+        role: RoleType.ADMIN,
+      },
+    },
+    update: {},
+    create: {
+      address: normalized,
+      role: RoleType.ADMIN,
+    },
+  });
+}
+
+const ADMINISTRATORS: Array<{ address: string; label?: string | null }> = [
+  {
+    address: "0x3ea7ac2bcdd8bcef",
+    label: "Werpool Core Admin",
+  },
+  {
+    address: "0xf69312194197e2d7",
+    label: "Werpool Flow Operator",
+  },
+];
+
 async function upsertMarket(params: {
   slug: string;
   title: string;
   description: string;
-  state: Prisma.MarketState;
-  category: Prisma.MarketCategory;
+  state: MarketState;
+  category: MarketCategory;
   tags?: string[];
   oracleId?: string;
   patrolThreshold?: number;
@@ -29,14 +91,14 @@ async function upsertMarket(params: {
   outcomes: Array<{
     id: string;
     label: string;
-    status: Prisma.OutcomeStatus;
+    status: OutcomeStatus;
     impliedProbability: number;
     liquidity: number;
   }>;
   workflow: Array<{
     id: string;
-    type: Prisma.WorkflowActionType;
-    status: Prisma.WorkflowActionStatus;
+    type: WorkflowActionType;
+    status: WorkflowActionStatus;
     description: string;
     triggersAt?: Date;
   }>;
@@ -50,7 +112,7 @@ async function upsertMarket(params: {
   patrolSignals?: Array<{
     id: string;
     issuer: string;
-    severity: Prisma.PatrolSignalSeverity;
+    severity: PatrolSignalSeverity;
     code: string;
     weight: number;
     expiresAt?: Date;
@@ -89,6 +151,15 @@ async function upsertMarket(params: {
         overrideReason: settlement.overrideReason ?? undefined,
       }
     : undefined;
+
+  const existingMarket = await prisma.market.findUnique({
+    where: { slug },
+    select: { id: true },
+  });
+
+  if (!settlementPayload && existingMarket) {
+    await prisma.settlement.deleteMany({ where: { marketId: existingMarket.id } });
+  }
 
   await prisma.market.upsert({
     where: { slug },
@@ -141,14 +212,16 @@ async function upsertMarket(params: {
           triggersAt: step.triggersAt,
         })),
       },
-      settlement: settlementPayload
+      ...(settlementPayload
         ? {
-            upsert: {
-              create: settlementPayload,
-              update: settlementPayload,
+            settlement: {
+              upsert: {
+                create: settlementPayload,
+                update: settlementPayload,
+              },
             },
           }
-        : { delete: true },
+        : {}),
       patrolSignals: {
         deleteMany: {},
         create: patrolSignals.map((signal) => ({
@@ -228,6 +301,10 @@ async function main() {
   const now = new Date();
   const hoursFromNow = (hours: number) =>
     new Date(now.getTime() + hours * 60 * 60 * 1000);
+
+  for (const admin of ADMINISTRATORS) {
+    await ensureAdminRole(admin.address, admin.label ?? null);
+  }
 
   await upsertMarket({
     slug: "flow-mainnet-volume",

@@ -65,6 +65,7 @@ import {
   type PointEventSource,
 } from "../lib/points-api";
 import { RoleAssignmentsPanel } from "./role-assignments-panel";
+import { RolePurchaseRequestsPanel } from "./role-purchase-requests-panel";
 import { MarketTransactionLogPanel } from "../components/market-transaction-log-panel";
 
 const ADMIN_PATH = "/admin";
@@ -168,10 +169,11 @@ const getBasePayload = (formData: FormData) => {
 export default async function AdminPage() {
   const auth = getSessionAuth();
 
-  const [markets, roles, directory, monitoring, schedulerTasks, leaderboard, snapshots]: [
+  const [markets, roles, directory, rolePurchaseRequests, monitoring, schedulerTasks, leaderboard, snapshots]: [
     MarketSummary[],
     RoleAssignment[],
     FlowUser[],
+    any[], // RolePurchaseRequest[]
     MonitoringSnapshot,
     SchedulerTask[],
     LeaderboardEntry[],
@@ -180,6 +182,9 @@ export default async function AdminPage() {
     fetchMarkets(),
     fetchRoleAssignments(auth),
     fetchRoleDirectory(auth),
+    fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/role-purchase`, {
+      headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {},
+    }).then(r => r.ok ? r.json() : []).catch(() => []),
     fetchMonitoringSnapshot(auth),
     fetchSchedulerTasks({ status: "PENDING", limit: 25, auth }),
     fetchLeaderboard(10, auth),
@@ -972,6 +977,13 @@ export default async function AdminPage() {
           ) : (
       <RoleAssignmentsPanel initialRoles={roles} directory={directory} />
           )}
+        </article>
+      </section>
+
+      <section id="admin-role-purchases" className="admin-section">
+        <article className="admin-section__content">
+          <h1 className="admin-title">Role Purchase Requests</h1>
+          <RolePurchaseRequestsPanel initialRequests={rolePurchaseRequests} />
         </article>
       </section>
 

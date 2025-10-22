@@ -15,6 +15,20 @@ const inter = Inter({ subsets: ['latin'], display: 'swap' });
 export const metadata: Metadata = {
   title: 'Werpool — Your forecast is your asset',
   description: 'Werpool is the social prediction exchange on Flow where intuition becomes an on-chain asset.',
+  appleWebApp: {
+    title: 'Werpool',
+    capable: true,
+    statusBarStyle: 'default',
+  },
+  icons: {
+    icon: [
+      { url: '/favicon/favicon-96x96.png', sizes: '96x96', type: 'image/png' },
+      { url: '/favicon/favicon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/favicon/favicon.ico',
+    apple: '/favicon/apple-touch-icon.png',
+  },
+  manifest: '/favicon/site.webmanifest',
 };
 
 export const viewport: Viewport = {

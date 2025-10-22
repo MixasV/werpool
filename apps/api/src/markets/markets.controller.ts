@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 
 import { MarketsService } from "./markets.service";
 import { MarketDto, MarketSummaryDto, toMarketDto, toMarketSummaryDto } from "./dto/market.dto";
@@ -132,6 +132,35 @@ export class MarketsController {
       to,
       limit: normalizedLimit,
     });
+  }
+
+  @Get(":id/topshot/options")
+  async getTopShotOptions(
+    @Param("id") id: string,
+    @Query("address") address?: string,
+    @Query("outcomeIndex") outcomeIndex?: string
+  ) {
+    if (!address) {
+      throw new BadRequestException("address query parameter is required");
+    }
+    const parsedOutcomeIndex = outcomeIndex !== undefined ? Number(outcomeIndex) : 0;
+    if (!Number.isInteger(parsedOutcomeIndex) || parsedOutcomeIndex < 0) {
+      throw new BadRequestException("outcomeIndex must be a non-negative integer");
+    }
+
+    return this.marketsService.listTopShotOptions(id, address, parsedOutcomeIndex);
+  }
+
+  @Get(":id/topshot/lock")
+  async getTopShotLock(
+    @Param("id") id: string,
+    @Query("address") address?: string
+  ) {
+    if (!address) {
+      throw new BadRequestException("address query parameter is required");
+    }
+
+    return this.marketsService.getTopShotLock(id, address);
   }
 
   @UseGuards(FlowOrApiGuard)

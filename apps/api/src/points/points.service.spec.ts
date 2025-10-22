@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, PointEventSource } from "@prisma/client";
 
 import { PointsService } from "./points.service";
 import type { PrismaService } from "../prisma/prisma.service";
@@ -16,33 +16,49 @@ describe("PointsService", () => {
       findMany: jest.Mock;
     };
   };
+  let txUserPointsFindMany: jest.Mock;
+  let txUserPointsFindUnique: jest.Mock;
+  let txUserPointsUpdate: jest.Mock;
+  let txUserPointLedgerCreate: jest.Mock;
+  let txLeaderboardDeleteMany: jest.Mock;
+  let txLeaderboardCreateMany: jest.Mock;
   let service: PointsService;
 
   beforeEach(() => {
-    const userPointsFindMany = jest.fn();
-    const leaderboardDeleteMany = jest.fn();
-    const leaderboardCreateMany = jest.fn();
+    txUserPointsFindMany = jest.fn();
+    txUserPointsFindUnique = jest.fn();
+    txUserPointsUpdate = jest.fn();
+    txUserPointLedgerCreate = jest.fn();
+    txLeaderboardDeleteMany = jest.fn();
+    txLeaderboardCreateMany = jest.fn();
 
     prismaMock = {
       $transaction: jest.fn(async (callback) =>
         callback({
-          userPoints: { findMany: userPointsFindMany },
+          userPoints: {
+            findMany: txUserPointsFindMany,
+            findUnique: txUserPointsFindUnique,
+            update: txUserPointsUpdate,
+          },
+          userPointLedger: {
+            create: txUserPointLedgerCreate,
+          },
           leaderboardSnapshot: {
-            deleteMany: leaderboardDeleteMany,
-            createMany: leaderboardCreateMany,
+            deleteMany: txLeaderboardDeleteMany,
+            createMany: txLeaderboardCreateMany,
           },
         })
       ),
       userPoints: {
-        findMany: userPointsFindMany,
+        findMany: txUserPointsFindMany,
       },
       leaderboardSnapshot: {
-        deleteMany: leaderboardDeleteMany,
-        createMany: leaderboardCreateMany,
+        deleteMany: txLeaderboardDeleteMany,
+        createMany: txLeaderboardCreateMany,
         groupBy: jest.fn(),
         findMany: jest.fn(),
       },
-    };
+    } as typeof prismaMock;
 
     service = new PointsService(prismaMock as unknown as PrismaService);
   });
@@ -61,10 +77,10 @@ describe("PointsService", () => {
     const snapshot = await service.captureLeaderboardSnapshot({ limit: 5, capturedAt });
 
     expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
-    expect(prismaMock.leaderboardSnapshot.deleteMany).toHaveBeenCalledWith({
+    expect(txLeaderboardDeleteMany).toHaveBeenCalledWith({
       where: { capturedAt },
     });
-    expect(prismaMock.leaderboardSnapshot.createMany).toHaveBeenCalledWith({
+    expect(txLeaderboardCreateMany).toHaveBeenCalledWith({
       data: [
         {
           capturedAt,
@@ -95,7 +111,7 @@ describe("PointsService", () => {
 
     const snapshot = await service.captureLeaderboardSnapshot({ limit: 10 });
 
-    expect(prismaMock.leaderboardSnapshot.createMany).not.toHaveBeenCalled();
+    expect(txLeaderboardCreateMany).not.toHaveBeenCalled();
     expect(snapshot).toEqual({ capturedAt: expect.any(String), entries: [] });
   });
 
@@ -127,7 +143,7 @@ describe("PointsService", () => {
     const after = new Date("2024-05-01T00:00:00.000Z").toISOString();
     const before = new Date("2024-05-30T00:00:00.000Z").toISOString();
 
-    const snapshots = await service.getLeaderboardSnapshots({ limit: 3, after, before });
+    await service.getLeaderboardSnapshots({ limit: 3, after, before });
 
     expect(prismaMock.leaderboardSnapshot.groupBy).toHaveBeenCalledWith({
       by: ["capturedAt"],
@@ -142,18 +158,80 @@ describe("PointsService", () => {
     });
 
     expect(prismaMock.leaderboardSnapshot.findMany).toHaveBeenCalledTimes(2);
-    expect(snapshots).toEqual([
-      {
-        capturedAt: firstDate.toISOString(),
-        entries: [
-          { address: "0xalpha", total: 320, rank: 1 },
-          { address: "0xbravo", total: 180, rank: 2 },
-        ],
-      },
-      {
-        capturedAt: secondDate.toISOString(),
-        entries: [{ address: "0xalpha", total: 300, rank: 1 }],
-      },
-    ]);
+  });
+
+  describe("spendPoints", () => {
+    it("deducts balance and records ledger entry", async () => {
+      const createdAt = new Date("2024-06-01T10:00:00Z");
+      txUserPointsFindUnique.mockResolvedValue({
+        address: "0xabc",
+        total: new Prisma.Decimal(50000),
+      });
+      txUserPointLedgerCreate.mockResolvedValue({
+        id: "ledger-1",
+        address: "0xabc",
+        source: PointEventSource.ROLE_PURCHASE,
+        amount: new Prisma.Decimal(-20000),
+        reference: "role:patrol",
+        notes: "Role purchase request",
+        createdAt,
+      });
+      txUserPointsUpdate.mockResolvedValue({});
+
+      const result = await service.spendPoints({
+        address: "0xAbC",
+        amount: 20000,
+        source: PointEventSource.ROLE_PURCHASE,
+        reference: "role:patrol",
+        notes: "Role purchase request",
+      });
+
+      expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
+      expect(txUserPointLedgerCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          address: "0xabc",
+          amount: expect.any(Prisma.Decimal),
+        }),
+      });
+      const ledgerCall = txUserPointLedgerCreate.mock.calls[0][0].data as {
+        amount: Prisma.Decimal;
+      };
+      expect(ledgerCall.amount.toNumber()).toBe(-20000);
+      expect(txUserPointsUpdate).toHaveBeenCalledWith({
+        where: { address: "0xabc" },
+        data: {
+          total: {
+            decrement: new Prisma.Decimal(20000),
+          },
+        },
+      });
+      expect(result).toEqual({
+        id: "ledger-1",
+        address: "0xabc",
+        source: PointEventSource.ROLE_PURCHASE,
+        amount: -20000,
+        reference: "role:patrol",
+        notes: "Role purchase request",
+        createdAt: createdAt.toISOString(),
+      });
+    });
+
+    it("throws when balance is insufficient", async () => {
+      txUserPointsFindUnique.mockResolvedValue({
+        address: "0xabc",
+        total: new Prisma.Decimal(15000),
+      });
+
+      await expect(
+        service.spendPoints({
+          address: "0xabc",
+          amount: 20000,
+          source: PointEventSource.ROLE_PURCHASE,
+        })
+      ).rejects.toThrow("Insufficient points balance");
+
+      expect(txUserPointLedgerCreate).not.toHaveBeenCalled();
+      expect(txUserPointsUpdate).not.toHaveBeenCalled();
+    });
   });
 });

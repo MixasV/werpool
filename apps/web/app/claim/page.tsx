@@ -13,10 +13,15 @@ import { ClaimCenter, type ClaimActionResult } from "../components/claim-center"
 
 export const dynamic = "force-dynamic";
 
+type LoadErrorState =
+  | { type: "unauthorized" }
+  | { type: "notFound"; details?: string }
+  | { type: "generic"; details?: string };
+
 export default async function ClaimPage() {
   const sessionCookieName = process.env.NEXT_PUBLIC_FLOW_SESSION_COOKIE ?? "flow_session";
   let settledMarkets: MarketDetail[] = [];
-  let loadError: string | null = null;
+  let loadError: LoadErrorState | null = null;
 
   try {
     const markets = await fetchMarkets();
@@ -30,7 +35,14 @@ export default async function ClaimPage() {
       .map((entry) => entry.value);
   } catch (error) {
     console.error("Failed to load claim center data", error);
-    loadError = error instanceof Error ? error.message : "Unknown loading error";
+    const message = error instanceof Error ? error.message : "Unknown loading error";
+    if (message.includes("API 401") || message.includes("API 403")) {
+      loadError = { type: "unauthorized" };
+    } else if (message.includes("API 404")) {
+      loadError = { type: "notFound", details: message };
+    } else {
+      loadError = { type: "generic", details: message };
+    }
   }
 
   const claimAction = async (formData: FormData): Promise<ClaimActionResult> => {
@@ -95,7 +107,29 @@ export default async function ClaimPage() {
 
       {loadError && (
         <section className="claim-page__notice">
-          <p className="error-text">{loadError}</p>
+          {loadError.type === "unauthorized" && (
+            <>
+              <h2>Connect Flow wallet to view claims</h2>
+              <p className="muted">
+                Sign in with your Flow wallet to load settled markets eligible for rewards.
+              </p>
+            </>
+          )}
+          {loadError.type === "notFound" && (
+            <>
+              <h2>Rewards temporarily unavailable</h2>
+              <p className="muted">
+                The rewards service is unavailable right now. Please verify the API connection and
+                try again shortly.
+              </p>
+            </>
+          )}
+          {loadError.type === "generic" && (
+            <>
+              <h2>Failed to load rewards</h2>
+              <p className="muted">{loadError.details ?? "Unexpected error occurred."}</p>
+            </>
+          )}
         </section>
       )}
 

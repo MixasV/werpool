@@ -49,9 +49,9 @@ export const useUserSignedTrade = ({ marketId, onSuccess, onError }: UseUserSign
       const outcomeAmount = shares;
 
       // Convert quote data for transaction
-      const newBVector = quote.nextBVector.map(v => parseFloat(v).toFixed(8));
-      const newTotalLiquidity = parseFloat(quote.nextTotalLiquidity).toFixed(8);
-      const newOutcomeSupply = quote.nextSupply.map(v => parseFloat(v).toFixed(8));
+      const newBVector = quote.newBVector.map((value) => parseFloat(value).toFixed(8));
+      const newTotalLiquidity = parseFloat(quote.newTotalLiquidity).toFixed(8);
+      const newOutcomeSupply = quote.newOutcomeSupply.map((value) => parseFloat(value).toFixed(8));
 
       setIsPreparingTx(false);
 

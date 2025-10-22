@@ -175,6 +175,11 @@ export interface QuoteTradePayload {
   isBuy: boolean;
 }
 
+export interface TopShotSelectionPayload {
+  momentId: string;
+  estimatedReward?: number | null;
+}
+
 export interface QuoteTradeResult {
   flowAmount: string;
   outcomeAmount: string;
@@ -184,12 +189,51 @@ export interface QuoteTradeResult {
   probabilities: number[];
   cadenceArguments: Array<{ type: string; value: unknown }>;
   transactionPath: string;
+  userPositionInfo?: {
+    currentPosition: number;
+    maxPosition: number;
+    remainingCapacity: number;
+    wouldExceedLimit: boolean;
+  };
 }
 
 export interface ExecuteTradePayload extends QuoteTradePayload {
   signer?: string;
   network?: string;
   maxFlowAmount?: number;
+  topShotSelection?: TopShotSelectionPayload | null;
+}
+
+export interface TopShotProjectedBonus {
+  marketId: string;
+  eventId: string;
+  momentId: string;
+  playerId?: string;
+  playerName?: string;
+  teamName?: string;
+  rarity: string;
+  projectedPoints: number;
+  capPerMatch: number;
+  outcomeIndex: number;
+  outcomeType: string;
+}
+
+export interface TopShotMomentLock {
+  id: string;
+  marketId: string;
+  eventId: string;
+  outcomeIndex: number;
+  outcomeType: string;
+  momentId: string;
+  playerId?: string;
+  playerName?: string;
+  teamName?: string;
+  rarity: string;
+  lockedAt: string;
+  changeDeadline?: string;
+  lockedUntil?: string;
+  estimatedReward?: number;
+  status: string;
 }
 
 export interface ExecuteTradeResult extends QuoteTradeResult {
@@ -516,6 +560,57 @@ export const fetchMarketAnalytics = async (
   });
 
   return parseJson<MarketAnalyticsPoint[]>(response);
+};
+
+export const fetchTopShotOptions = async (
+  idOrSlug: string,
+  params: { address: string; outcomeIndex: number },
+  auth?: AuthOptions
+): Promise<TopShotProjectedBonus[]> => {
+  const query = new URLSearchParams();
+  query.set("address", params.address);
+  query.set("outcomeIndex", params.outcomeIndex.toString());
+  const encodedId = encodeURIComponent(idOrSlug);
+  const authOptions: AuthOptions = {
+    token: auth?.token ?? undefined,
+    allowApiTokenFallback: auth?.allowApiTokenFallback ?? false,
+  };
+  const response = await fetch(
+    `${API_BASE_URL}/markets/${encodedId}/topshot/options?${query.toString()}`,
+    withAuthHeaders(
+      {
+        cache: "no-store",
+      },
+      authOptions
+    )
+  );
+
+  return parseJson<TopShotProjectedBonus[]>(response);
+};
+
+export const fetchTopShotLock = async (
+  idOrSlug: string,
+  address: string,
+  auth?: AuthOptions
+): Promise<TopShotMomentLock | null> => {
+  const query = new URLSearchParams();
+  query.set("address", address);
+  const encodedId = encodeURIComponent(idOrSlug);
+  const authOptions: AuthOptions = {
+    token: auth?.token ?? undefined,
+    allowApiTokenFallback: auth?.allowApiTokenFallback ?? false,
+  };
+  const response = await fetch(
+    `${API_BASE_URL}/markets/${encodedId}/topshot/lock?${query.toString()}`,
+    withAuthHeaders(
+      {
+        cache: "no-store",
+      },
+      authOptions
+    )
+  );
+
+  return parseJson<TopShotMomentLock | null>(response);
 };
 
 export interface MarketActionPayload {

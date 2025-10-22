@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { ChangeEvent, useCallback, useEffect, useMemo, useState, useTransition } from "react";
 
 import {
   fetchMarketTrades,
+  fetchTopShotLock,
+  fetchTopShotOptions,
   type ExecuteTradePayload,
   type ExecuteTradeResult,
   type MarketDetail,
@@ -12,6 +14,9 @@ import {
   type MarketTrade,
   type QuoteTradePayload,
   type QuoteTradeResult,
+  type TopShotMomentLock,
+  type TopShotProjectedBonus,
+  type TopShotSelectionPayload,
 } from "../lib/markets-api";
 import { useFlowWallet } from "../providers/flow-wallet-provider";
 import { ExecutionStatus } from "./execution-status";
@@ -26,6 +31,7 @@ interface MarketTradePanelProps {
   refreshPool: () => Promise<MarketPoolState>;
   marketSlug: string;
   marketId: string;
+  marketCategory: MarketDetail["category"];
   initialTrades: MarketTrade[];
   tradesLimit?: number;
 }
@@ -168,6 +174,7 @@ export const MarketTradePanel = ({
   refreshPool,
   marketSlug,
   marketId,
+  marketCategory,
   initialTrades,
   tradesLimit = 50,
 }: MarketTradePanelProps) => {
@@ -192,14 +199,38 @@ export const MarketTradePanel = ({
   const [priceImpact, setPriceImpact] = useState<number | null>(null);
   const [isQuoting, startQuote] = useTransition();
   const [isExecuting, startExecute] = useTransition();
-  const { addr, loggedIn, isReady, logIn, logOut } = useFlowWallet();
+  const { addr, loggedIn, isReady, logIn, logOut, sessionToken, network: walletNetwork } =
+    useFlowWallet();
+  const [topShotOptions, setTopShotOptions] = useState<TopShotProjectedBonus[]>([]);
+  const [topShotLock, setTopShotLock] = useState<TopShotMomentLock | null>(null);
+  const [topShotLoading, setTopShotLoading] = useState(false);
+  const [topShotError, setTopShotError] = useState<string | null>(null);
+  const [topShotDirty, setTopShotDirty] = useState(false);
+  const [selectedTopShotMomentId, setSelectedTopShotMomentId] = useState<string | null>(null);
+  const [topShotReloadToken, setTopShotReloadToken] = useState(0);
 
   const hasOutcomes = outcomes.length > 0;
   const selectedOutcome = useMemo(
     () => outcomes[outcomeIndex] ?? null,
     [outcomes, outcomeIndex]
   );
-  const network = process.env.NEXT_PUBLIC_FLOW_NETWORK ?? "emulator";
+  const selectedOutcomeType = useMemo(() => {
+    if (!selectedOutcome || !selectedOutcome.metadata) {
+      return null;
+    }
+    const typeValue = (selectedOutcome.metadata as Record<string, unknown>).type;
+    return typeof typeValue === "string" ? typeValue.toLowerCase() : null;
+  }, [selectedOutcome]);
+  const selectedOutcomeTeam = useMemo(() => {
+    if (!selectedOutcome || !selectedOutcome.metadata) {
+      return null;
+    }
+    const teamValue = (selectedOutcome.metadata as Record<string, unknown>).teamName;
+    return typeof teamValue === "string" ? teamValue : null;
+  }, [selectedOutcome]);
+  const isSportsMarket = marketCategory === "sports";
+  const topShotEligible = isSportsMarket && (selectedOutcomeType === "home" || selectedOutcomeType === "away");
+  const resolvedNetwork = walletNetwork ?? process.env.NEXT_PUBLIC_FLOW_NETWORK ?? "emulator";
   const baseProbabilities = useMemo(() => computeProbabilities(poolState), [poolState]);
   const currentProbability = baseProbabilities && outcomeIndex < baseProbabilities.length
     ? baseProbabilities[outcomeIndex]
@@ -269,6 +300,62 @@ export const MarketTradePanel = ({
     };
   }, [poolState, outcomes.length, outcomeIndex]);
 
+  const selectedTopShotOption = useMemo(() => {
+    if (!selectedTopShotMomentId) {
+      return null;
+    }
+    return topShotOptions.find((option) => option.momentId === selectedTopShotMomentId) ?? null;
+  }, [topShotOptions, selectedTopShotMomentId]);
+
+  const topShotSelectOptions = useMemo(() => {
+    if (!topShotLock) {
+      return topShotOptions;
+    }
+    const exists = topShotOptions.some((option) => option.momentId === topShotLock.momentId);
+    if (exists) {
+      return topShotOptions;
+    }
+    return [
+      ...topShotOptions,
+      {
+        marketId: topShotLock.marketId,
+        eventId: topShotLock.eventId,
+        momentId: topShotLock.momentId,
+        playerId: topShotLock.playerId,
+        playerName: topShotLock.playerName ?? undefined,
+        teamName: topShotLock.teamName ?? undefined,
+        rarity: topShotLock.rarity,
+        projectedPoints: topShotLock.estimatedReward ?? 0,
+        capPerMatch: 0,
+        outcomeIndex: topShotLock.outcomeIndex,
+        outcomeType: topShotLock.outcomeType,
+      },
+    ];
+  }, [topShotOptions, topShotLock]);
+
+  const computeTopShotSelectionPayload = useCallback((): TopShotSelectionPayload | null | undefined => {
+    if (!topShotEligible) {
+      return undefined;
+    }
+    if (!topShotDirty) {
+      return undefined;
+    }
+    if (!selectedTopShotMomentId) {
+      return null;
+    }
+
+    const projected =
+      selectedTopShotOption?.projectedPoints ??
+      (topShotLock && topShotLock.momentId === selectedTopShotMomentId
+        ? topShotLock.estimatedReward ?? undefined
+        : undefined);
+
+    return {
+      momentId: selectedTopShotMomentId,
+      ...(typeof projected === "number" ? { estimatedReward: projected } : {}),
+    };
+  }, [topShotEligible, topShotDirty, selectedTopShotMomentId, selectedTopShotOption, topShotLock]);
+
   useEffect(() => {
     setPoolState(initialPoolState);
   }, [initialPoolState]);
@@ -294,6 +381,82 @@ export const MarketTradePanel = ({
   useEffect(() => {
     setPriceImpact(null);
   }, [outcomeIndex, isBuy, poolState]);
+
+  useEffect(() => {
+    if (!topShotEligible || !loggedIn || !addr) {
+      setTopShotOptions([]);
+      setTopShotLock(null);
+      setTopShotError(null);
+      setTopShotLoading(false);
+      if (!topShotDirty) {
+        setSelectedTopShotMomentId(null);
+      }
+      return;
+    }
+
+    let cancelled = false;
+    setTopShotLoading(true);
+    setTopShotError(null);
+
+    const authOptions = sessionToken
+      ? { token: sessionToken, allowApiTokenFallback: false as const }
+      : { allowApiTokenFallback: false as const };
+
+    Promise.all([
+      fetchTopShotOptions(
+        marketId,
+        { address: addr, outcomeIndex },
+        authOptions
+      ),
+      fetchTopShotLock(marketId, addr, authOptions),
+    ])
+      .then(([options, lock]) => {
+        if (cancelled) {
+          return;
+        }
+        setTopShotOptions(options);
+        setTopShotLock(lock);
+        if (!topShotDirty) {
+          if (lock) {
+            setSelectedTopShotMomentId(lock.momentId);
+          } else {
+            setSelectedTopShotMomentId(null);
+          }
+        }
+      })
+      .catch((loadError) => {
+        if (cancelled) {
+          return;
+        }
+        const message =
+          loadError instanceof Error ? loadError.message : "Failed to load Top Shot bonuses";
+        setTopShotError(message);
+        setTopShotOptions([]);
+        setTopShotLock(null);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setTopShotLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    topShotEligible,
+    loggedIn,
+    addr,
+    sessionToken,
+    marketId,
+    outcomeIndex,
+    topShotDirty,
+    topShotReloadToken,
+  ]);
+
+  useEffect(() => {
+    setTopShotDirty(false);
+  }, [outcomeIndex]);
 
   const reloadHistory = useCallback(async (): Promise<MarketTrade[]> => {
     if (!marketId) {
@@ -414,9 +577,20 @@ export const MarketTradePanel = ({
       } catch (historyError) {
         console.error("Failed to refresh trade history", historyError);
       }
+
+      if (isSportsMarket) {
+        setTopShotDirty(false);
+        setTopShotReloadToken((token) => token + 1);
+      }
     },
-    [refreshPoolState, reloadHistory]
+    [refreshPoolState, reloadHistory, isSportsMarket]
   );
+
+  const handleTopShotSelectionChange = (event: ChangeEvent<HTMLSelectElement>) => {
+    const value = event.target.value;
+    setTopShotDirty(true);
+    setSelectedTopShotMomentId(value ? value : null);
+  };
 
   const handleQuote = () => {
     const shares = parseShares();
@@ -481,9 +655,14 @@ export const MarketTradePanel = ({
       shares,
       isBuy,
       signer: addr ?? undefined,
-      network,
+      network: resolvedNetwork,
       ...(maxFlowAmount ? { maxFlowAmount } : {}),
     };
+
+    const topShotSelection = computeTopShotSelectionPayload();
+    if (topShotSelection !== undefined) {
+      payload.topShotSelection = topShotSelection;
+    }
 
     setPendingPayload(payload);
     setConfirmOpen(true);
@@ -557,6 +736,66 @@ export const MarketTradePanel = ({
                 Outcome balance: {isBalancesLoading ? "Loading…" : balances ? formatShares(balances.outcomeBalance) : "—"}
               </p>
               {balanceError && <p className="error-text">{balanceError}</p>}
+            </div>
+          )}
+
+          {topShotEligible && loggedIn && (
+            <div className="market-trade__topshot">
+              <div className="market-trade__topshot-header">
+                <h3>Top Shot bonus</h3>
+                {selectedOutcomeTeam && <span className="muted">{selectedOutcomeTeam}</span>}
+              </div>
+              {topShotLoading ? (
+                <p className="muted">Loading eligible moments…</p>
+              ) : (
+                <>
+                  {topShotError && <p className="error-text">{topShotError}</p>}
+                  {!topShotError && topShotSelectOptions.length === 0 && !topShotLock && (
+                    <p className="muted">No eligible NBA Top Shot moments found for this outcome.</p>
+                  )}
+                  {(topShotSelectOptions.length > 0 || topShotLock) && (
+                    <div className="market-trade__topshot-form">
+                      <label>
+                        Moment selection
+                        <select
+                          value={selectedTopShotMomentId ?? ""}
+                          onChange={handleTopShotSelectionChange}
+                          disabled={topShotLoading}
+                        >
+                          <option value="">No Top Shot bonus</option>
+                          {topShotSelectOptions.map((option) => (
+                            <option key={option.momentId} value={option.momentId}>
+                              {option.playerName ?? "Unnamed player"} · {option.rarity} · {" "}
+                              {option.projectedPoints.toFixed(1)} pts
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      {selectedTopShotOption && selectedTopShotMomentId && (
+                        <p className="muted">
+                          Projected bonus: {selectedTopShotOption.projectedPoints.toFixed(1)} pts
+                          {selectedTopShotOption.capPerMatch > 0
+                            ? ` (cap ${selectedTopShotOption.capPerMatch.toFixed(0)} pts)`
+                            : null}
+                        </p>
+                      )}
+                      {topShotLock && (
+                        <p className="muted">
+                          Current lock: {topShotLock.playerName ?? "Unnamed player"} · {topShotLock.rarity}
+                          {topShotLock.estimatedReward
+                            ? ` · est. ${topShotLock.estimatedReward.toFixed(1)} pts`
+                            : ""}
+                        </p>
+                      )}
+                      {!isBuy && (
+                        <p className="muted">
+                          Rewards trigger on buy trades only. Selling will not grant new bonus points.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           )}
 
@@ -664,6 +903,32 @@ export const MarketTradePanel = ({
                       : "—"}
                   </dd>
                 </div>
+                {quote.userPositionInfo && isBuy && (
+                  <>
+                    <div>
+                      <dt>Your current position</dt>
+                      <dd>{quote.userPositionInfo.currentPosition.toFixed(2)} FLOW</dd>
+                    </div>
+                    <div>
+                      <dt>Position limit</dt>
+                      <dd>{quote.userPositionInfo.maxPosition} FLOW</dd>
+                    </div>
+                    <div>
+                      <dt>Remaining capacity</dt>
+                      <dd className={quote.userPositionInfo.remainingCapacity < 100 ? "text-warning" : ""}>
+                        {quote.userPositionInfo.remainingCapacity.toFixed(2)} FLOW
+                      </dd>
+                    </div>
+                    {quote.userPositionInfo.wouldExceedLimit && (
+                      <div className="position-warning">
+                        <dt>⚠️ Warning</dt>
+                        <dd style={{ color: "#ff4444" }}>
+                          This trade would exceed your position limit!
+                        </dd>
+                      </div>
+                    )}
+                  </>
+                )}
                 <div>
                   <dt>New probability</dt>
                   <dd>

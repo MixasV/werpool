@@ -25,6 +25,7 @@ import { CreateSchedulerTaskDto } from "./dto/create-scheduler-task.dto";
 import { UpdateSchedulerTaskDto } from "./dto/update-scheduler-task.dto";
 import { RunDueTasksDto } from "./dto/run-due-tasks.dto";
 import { SchedulerTaskDto, TaskExecutionResult } from "./dto/scheduler-task.dto";
+import { serializeJsonInput } from "../common/prisma-json.util";
 
 type RequestWithSession = Request & { flowSession?: FlowSessionPayload };
 
@@ -93,7 +94,7 @@ export class SchedulerController {
     const createInput: Prisma.SchedulerTaskUncheckedCreateInput = {
       type: body.type,
       scheduledFor,
-      payload: body.payload ?? undefined,
+      payload: serializeJsonInput(body.payload ?? undefined) ?? null,
       description: body.description ?? undefined,
       createdBy: request.flowSession?.address ?? undefined,
       marketId: body.marketId ?? undefined,
@@ -120,7 +121,7 @@ export class SchedulerController {
       data.scheduledFor = scheduledFor;
     }
     if (body.payload !== undefined) {
-      data.payload = body.payload;
+      data.payload = serializeJsonInput(body.payload ?? undefined);
     }
     if (body.description !== undefined) {
       data.description = body.description;

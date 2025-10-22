@@ -1,17 +1,24 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { useFlowWallet } from "../providers/flow-wallet-provider";
 
 interface OnboardingDialogProps {
   open: boolean;
   onClose: () => void;
+  initialTab?: "wallet" | "custodial";
+  initialError?: string | null;
 }
 
 type Tab = "wallet" | "custodial";
 
-export const OnboardingDialog = ({ open, onClose }: OnboardingDialogProps) => {
+export const OnboardingDialog = ({
+  open,
+  onClose,
+  initialTab = "wallet",
+  initialError = null,
+}: OnboardingDialogProps) => {
   const {
     logIn,
     requestCustodialLogin,
@@ -19,12 +26,12 @@ export const OnboardingDialog = ({ open, onClose }: OnboardingDialogProps) => {
     custodialState,
   } = useFlowWallet();
 
-  const [activeTab, setActiveTab] = useState<Tab>("wallet");
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab);
   const [email, setEmail] = useState("");
   const [tokenInput, setTokenInput] = useState("");
   const [pending, setPending] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialError);
 
   const verificationToken = useMemo(() => {
     if (custodialState.email && custodialState.email === email.trim().toLowerCase()) {
@@ -32,6 +39,19 @@ export const OnboardingDialog = ({ open, onClose }: OnboardingDialogProps) => {
     }
     return null;
   }, [custodialState, email]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setActiveTab(initialTab);
+    setError(initialError);
+    setStatus(null);
+    setPending(false);
+    setEmail("");
+    setTokenInput("");
+  }, [open, initialTab, initialError]);
 
   if (!open) {
     return null;
