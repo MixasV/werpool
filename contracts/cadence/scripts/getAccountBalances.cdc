@@ -14,7 +14,7 @@ access(all) struct AccountMarketBalances {
 
 access(all) fun main(account: Address, marketId: UInt64): AccountMarketBalances {
     let flowCapability = getAccount(account)
-        .getCapability<&FlowToken.Vault{FungibleToken.Balance}>(/public/flowTokenBalance)
+        .getCapability<&{FungibleToken.Balance}>(/public/flowTokenBalance)
 
     var flowBalance: UFix64 = 0.0
     if let vaultRef = flowCapability.borrow() {
@@ -23,7 +23,7 @@ access(all) fun main(account: Address, marketId: UInt64): AccountMarketBalances 
 
     let suffix = marketId.toString()
     let outcomePath = PublicPath(identifier: "/public/forte_outcomeBalance_".concat(suffix))!
-    let outcomeCapability = getAccount(account).getCapability<&OutcomeToken.Vault>(outcomePath)
+    let outcomeCapability = getAccount(account).getCapability<&{FungibleToken.Balance}>(outcomePath)
 
     var outcomeBalance: UFix64 = 0.0
     if let outcomeRef = outcomeCapability.borrow() {

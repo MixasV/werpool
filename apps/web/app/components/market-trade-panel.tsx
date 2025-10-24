@@ -856,74 +856,144 @@ export const MarketTradePanel = ({
           )}
 
           <div className="market-trade__controls">
-            <label className="field">
-              <span>Outcome</span>
-              <select
-                value={outcomeIndex}
-                onChange={(event) => setOutcomeIndex(Number.parseInt(event.target.value, 10))}
-              >
+            {/* Outcome Selection - Tabs instead of dropdown */}
+            <div className="outcome-tabs">
+              <span className="field-label">Select Outcome</span>
+              <div className="tabs-container">
                 {outcomes.map((outcome, index) => (
-                  <option key={outcome.id} value={index}>
-                    {outcome.label}
-                  </option>
+                  <button
+                    key={outcome.id}
+                    type="button"
+                    className={`outcome-tab ${outcomeIndex === index ? "active" : ""}`}
+                    onClick={() => setOutcomeIndex(index)}
+                  >
+                    <span className="outcome-label">{outcome.label}</span>
+                    <span className="outcome-prob">
+                      {baseProbabilities && baseProbabilities[index] !== undefined
+                        ? `${(baseProbabilities[index] * 100).toFixed(1)}%`
+                        : "—"}
+                    </span>
+                  </button>
                 ))}
-              </select>
-            </label>
+              </div>
+            </div>
 
-            <label className="field">
-              <span>Shares</span>
+            {/* Buy/Sell Toggle - Prominent buttons */}
+            <div className="trade-direction">
+              <span className="field-label">Direction</span>
+              <div className="direction-buttons">
+                <button
+                  type="button"
+                  className={`direction-btn buy ${isBuy ? "active" : ""}`}
+                  onClick={() => setIsBuy(true)}
+                >
+                  Buy
+                </button>
+                <button
+                  type="button"
+                  className={`direction-btn sell ${!isBuy ? "active" : ""}`}
+                  onClick={() => setIsBuy(false)}
+                >
+                  Sell
+                </button>
+              </div>
+            </div>
+
+            {/* Amount Input with Preset Buttons */}
+            <div className="amount-input-group">
+              <label className="field-label">Amount (FLOW)</label>
+              <div className="amount-presets">
+                <button
+                  type="button"
+                  className="preset-btn"
+                  onClick={() => setSharesInput("10")}
+                >
+                  10
+                </button>
+                <button
+                  type="button"
+                  className="preset-btn"
+                  onClick={() => setSharesInput("25")}
+                >
+                  25
+                </button>
+                <button
+                  type="button"
+                  className="preset-btn"
+                  onClick={() => setSharesInput("50")}
+                >
+                  50
+                </button>
+                <button
+                  type="button"
+                  className="preset-btn"
+                  onClick={() => setSharesInput("100")}
+                >
+                  100
+                </button>
+              </div>
               <input
                 type="number"
                 min="0"
                 step="0.1"
                 value={sharesInput}
                 onChange={(event) => setSharesInput(event.target.value)}
+                className="amount-input"
+                placeholder="Enter shares amount"
               />
-            </label>
+            </div>
 
-            <label className="field checkbox">
-              <input
-                type="checkbox"
-                checked={isBuy}
-                onChange={(event) => setIsBuy(event.target.checked)}
-              />
-              <span>{isBuy ? "Buy" : "Sell"}</span>
-            </label>
-
-            <label className="field">
-              <span>Slippage (%)</span>
-              <input
-                type="number"
-                min="0"
-                step="0.1"
-                value={toleranceInput}
-                onChange={(event) => setToleranceInput(event.target.value)}
-              />
-            </label>
+            {/* Slippage - Compact */}
+            <details className="slippage-details">
+              <summary>
+                Advanced settings (Slippage: {toleranceInput || "0.5"}%)
+              </summary>
+              <label className="field">
+                <span>Slippage tolerance (%)</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={toleranceInput}
+                  onChange={(event) => setToleranceInput(event.target.value)}
+                />
+              </label>
+            </details>
           </div>
 
           <div className="market-trade__actions">
-            <button type="button" className="button" onClick={handleQuote} disabled={isQuoting}>
-              {isQuoting ? "Requesting quote…" : "Get quote"}
-            </button>
+            {/* Single prominent action button */}
             <button
               type="button"
-              className="button secondary"
-              onClick={handleExecute}
-              disabled={isExecuting}
-            >
-              {isExecuting ? "Executing…" : "Execute trade"}
-            </button>
-            <button
-              type="button"
-              className="button tertiary"
-              onClick={() => {
-                void refreshPoolState();
+              className={`button-large ${isBuy ? "button-buy" : "button-sell"}`}
+              onClick={async () => {
+                await handleQuote();
+                if (quote) {
+                  await handleExecute();
+                }
               }}
-              disabled={isPoolRefreshing}
+              disabled={isQuoting || isExecuting || !sharesInput || parseFloat(sharesInput) <= 0}
             >
-              {isPoolRefreshing ? "Refreshing pool…" : "Refresh pool"}
+              {isQuoting
+                ? "Getting quote..."
+                : isExecuting
+                ? `${isBuy ? "Buying" : "Selling"}...`
+                : `${isBuy ? "Buy" : "Sell"} ${sharesInput || "0"} shares`}
             </button>
+            
+            {/* Secondary actions */}
+            <div className="secondary-actions">
+              <button
+                type="button"
+                className="button-link"
+                onClick={() => {
+                  void refreshPoolState();
+                }}
+                disabled={isPoolRefreshing}
+              >
+                {isPoolRefreshing ? "Refreshing..." : "↻ Refresh pool"}
+              </button>
+            </div>
           </div>
 
           <div className="market-trade__result">
