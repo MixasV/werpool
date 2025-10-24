@@ -23,6 +23,7 @@ import {
   updateMarket,
 } from "../../lib/markets-api";
 import { fetchMarketAnalytics } from "../../lib/market-analytics-api";
+import { fetchCurrentSession } from "../../lib/flow-auth-api";
 
 interface MarketPageParams {
   params: {
@@ -36,6 +37,23 @@ export default async function MarketDetailPage({ params }: MarketPageParams) {
   const { slug } = params;
 
   const sessionCookieName = process.env.NEXT_PUBLIC_FLOW_SESSION_COOKIE ?? "flow_session";
+  
+  // Get user roles for RBAC
+  const token = cookies().get(sessionCookieName)?.value ?? null;
+  let userRoles: string[] = [];
+  try {
+    if (token) {
+      const session = await fetchCurrentSession({ token, allowApiTokenFallback: false });
+      userRoles = session.roles;
+    }
+  } catch {
+    // Not authenticated or session expired - no roles
+    userRoles = [];
+  }
+  
+  const isAdmin = userRoles.includes("admin");
+  const isOperator = userRoles.includes("operator");
+  const canEdit = isAdmin || isOperator;
 
   try {
     const market = await fetchMarket(slug);
@@ -255,29 +273,35 @@ export default async function MarketDetailPage({ params }: MarketPageParams) {
           initialTransactions={transactions}
           limit={transactionLimit}
         />
-        <MarketLiquidityPanel
-          marketSlug={market.slug}
-          outcomes={market.outcomes}
-          initialState={poolState}
-          refreshPool={refreshPoolState}
-          onCreatePool={createPoolAction}
-          onMint={mintLiquidityAction}
-          onBurn={burnLiquidityAction}
-        />
-        <MarketPoolPanel
-          marketSlug={market.slug}
-          initialState={poolState}
-          refreshPool={refreshPoolState}
-        />
-        <section className="market-page__editor">
-          <h2>Edit market</h2>
-          <MarketForm
-            action={handleUpdate}
-            marketId={market.id}
-            initial={market}
-            submitLabel="Update market"
-          />
-        </section>
+        
+        {/* RBAC: Only admin/operator can manage liquidity */}
+        {canEdit && (
+          <>
+            <MarketLiquidityPanel
+              marketSlug={market.slug}
+              outcomes={market.outcomes}
+              initialState={poolState}
+              refreshPool={refreshPoolState}
+              onCreatePool={createPoolAction}
+              onMint={mintLiquidityAction}
+              onBurn={burnLiquidityAction}
+            />
+            <MarketPoolPanel
+              marketSlug={market.slug}
+              initialState={poolState}
+              refreshPool={refreshPoolState}
+            />
+            <section className="market-page__editor">
+              <h2>Edit market</h2>
+              <MarketForm
+                action={handleUpdate}
+                marketId={market.id}
+                initial={market}
+                submitLabel="Update market"
+              />
+            </section>
+          </>
+        )}
       </main>
     );
   } catch (error) {
