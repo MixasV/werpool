@@ -17,20 +17,29 @@ export const initFlowConfig = (): void => {
     contracts,
   } = resolveFlowConfig();
 
-  fcl.config({
-    "app.detail.title": appTitle,
+  // CRITICAL: Only set valid string values - FCL may be reading icon file as binary
+  const config: Record<string, string> = {
+    "app.detail.title": appTitle || "Werpool - Flow Prediction Markets",
     "app.detail.description": "Prediction markets on Flow blockchain where your forecast becomes an on-chain asset",
-    "app.detail.icon": appIcon || "https://werpool.mixas.pro/favicon/apple-touch-icon.png",
     "app.detail.url": "https://werpool.mixas.pro",
     "accessNode.api": accessNode,
     "discovery.wallet": discoveryWallet,
     "0xCoreMarketHub": contracts.coreMarketHub,
     "0xLMSRAmm": contracts.lmsrAmm,
     "0xOutcomeToken": contracts.outcomeToken,
-    ...(process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID && {
-      "walletconnect.projectId": process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-    }),
-  });
+  };
+
+  // Only add icon if it's a valid URL string (not binary data)
+  const iconUrl = appIcon || "https://werpool.mixas.pro/favicon/apple-touch-icon.png";
+  if (iconUrl && typeof iconUrl === "string" && iconUrl.startsWith("http")) {
+    config["app.detail.icon"] = iconUrl;
+  }
+
+  if (process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
+    config["walletconnect.projectId"] = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+  }
+
+  fcl.config(config);
 
   configured = true;
 };

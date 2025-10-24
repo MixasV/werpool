@@ -225,6 +225,7 @@ export const FlowWalletProvider = ({ children }: { children: ReactNode }) => {
       // Check if user cancelled the signature request
       if (!signatures || (Array.isArray(signatures) && signatures.length === 0)) {
         resetSession();
+        await fcl.unauthenticate(); // Clear FCL state to prevent re-triggering
         setSessionError("Authentication cancelled. Please try connecting your wallet again.");
         setAuthenticating(false);
         return;
@@ -249,6 +250,7 @@ export const FlowWalletProvider = ({ children }: { children: ReactNode }) => {
       
       // User-friendly error messages
       let message = "Failed to verify Flow session";
+      let shouldUnauthenticate = false;
       
       if (error instanceof Error) {
         const errorMsg = error.message.toLowerCase();
@@ -256,19 +258,27 @@ export const FlowWalletProvider = ({ children }: { children: ReactNode }) => {
         // User cancelled wallet action
         if (errorMsg.includes("declined") || errorMsg.includes("rejected") || errorMsg.includes("cancelled")) {
           message = "Authentication cancelled. Please try connecting your wallet again.";
+          shouldUnauthenticate = true;
         }
         // Signature validation failed
         else if (errorMsg.includes("signatures are required") || errorMsg.includes("signature")) {
           message = "Authentication cancelled. Please approve the signature request in your wallet.";
+          shouldUnauthenticate = true;
         }
         // Generic API errors
         else if (errorMsg.includes("api 400") || errorMsg.includes("bad request")) {
           message = "Authentication failed. Please try again.";
+          shouldUnauthenticate = true;
         }
         // Keep original message for other errors
         else {
           message = error.message;
         }
+      }
+      
+      // Clear FCL state to prevent automatic re-authentication
+      if (shouldUnauthenticate) {
+        await fcl.unauthenticate();
       }
       
       setSessionError(message);
