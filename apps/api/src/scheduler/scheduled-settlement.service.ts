@@ -158,14 +158,42 @@ export class ScheduledSettlementService {
    * REAL IMPLEMENTATION using FlowVolumeOracleService
    */
   private async resolveFlowVolume(market: any): Promise<number | null> {
-    // Extract target date and threshold from market metadata
-    const metadata = market.metadata as any;
-    const targetDateStr = metadata?.targetDate;
-    const threshold = metadata?.transactionThreshold;
+    // Extract target date and threshold from market tags (format: "target:YYYY-MM-DD", "threshold:NUMBER")
+    const tags = market.tags || [];
+    const targetDateTag = tags.find((tag: string) => tag.startsWith('target:'));
+    const thresholdTag = tags.find((tag: string) => tag.startsWith('threshold:'));
 
-    if (!targetDateStr || typeof threshold !== 'number') {
+    let targetDateStr: string | undefined;
+    let threshold: number | undefined;
+
+    if (targetDateTag) {
+      targetDateStr = targetDateTag.replace('target:', '');
+    }
+
+    if (thresholdTag) {
+      const thresholdValue = thresholdTag.replace('threshold:', '');
+      threshold = parseFloat(thresholdValue);
+    }
+
+    // HONEST: For demo, use closeAt as target date if no tag specified
+    if (!targetDateStr && market.closeAt) {
+      targetDateStr = new Date(market.closeAt).toISOString().split('T')[0];
+      this.logger.log(
+        `Market ${market.slug} using closeAt date as target: ${targetDateStr}`
+      );
+    }
+
+    // Default threshold: 100k transactions (typical Flow mainnet daily volume)
+    if (typeof threshold !== 'number' || isNaN(threshold)) {
+      threshold = 100000;
+      this.logger.log(
+        `Market ${market.slug} using default threshold: ${threshold} transactions`
+      );
+    }
+
+    if (!targetDateStr) {
       this.logger.warn(
-        `Market ${market.slug} missing targetDate or transactionThreshold in metadata`
+        `Market ${market.slug} missing target date in tags or closeAt`
       );
       return null;
     }
