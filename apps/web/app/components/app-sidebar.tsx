@@ -6,9 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useFlowWallet } from "../providers/flow-wallet-provider";
 import {
-  fetchLeaderboard,
   fetchMyPointsSummary,
-  type LeaderboardEntry,
   type PointsSummary,
 } from "../lib/points-api";
 
@@ -41,7 +39,6 @@ export const AppSidebar = () => {
   const pathname = usePathname();
   const { sessionRoles, network, addr, loggedIn } = useFlowWallet();
   const [pointsSummary, setPointsSummary] = useState<PointsSummary | null>(null);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoadingPoints, setLoadingPoints] = useState(false);
   const [pointsError, setPointsError] = useState<string | null>(null);
 
@@ -66,7 +63,6 @@ export const AppSidebar = () => {
 
     if (!loggedIn) {
       setPointsSummary(null);
-      setLeaderboard([]);
       setPointsError(null);
       return () => {
         cancelled = true;
@@ -76,13 +72,10 @@ export const AppSidebar = () => {
     const loadPoints = async () => {
       setLoadingPoints(true);
       try {
-        const [summary, top] = await Promise.all([
-          fetchMyPointsSummary(),
-          fetchLeaderboard(5),
-        ]);
+        // Only fetch user's own points, no leaderboard
+        const summary = await fetchMyPointsSummary();
         if (!cancelled) {
           setPointsSummary(summary);
-          setLeaderboard(top);
           setPointsError(null);
         }
       } catch (error) {
@@ -116,20 +109,6 @@ export const AppSidebar = () => {
     }).format(pointsSummary.total);
   }, [pointsSummary]);
 
-  const highlightedRank = useMemo(() => {
-    if (!addr) {
-      return null;
-    }
-    return leaderboard.find((entry) => entry.address.toLowerCase() === addr.toLowerCase());
-  }, [addr, leaderboard]);
-
-  const formatLeaderboardAddress = (address: string) => {
-    if (address.length <= 10) {
-      return address;
-    }
-    return `${address.slice(0, 6)}…${address.slice(-4)}`;
-  };
-
   return (
     <aside className="app-sidebar">
       <div className="app-sidebar__section">
@@ -151,60 +130,46 @@ export const AppSidebar = () => {
           })}
         </ul>
       </div>
-      <div className="app-sidebar__section app-sidebar__section--status">
-        <p className="app-sidebar__label">Session</p>
-        <div className="app-sidebar__status-card">
-          <span className="app-sidebar__status-line">
-            <span className="app-sidebar__status-key">Network</span>
-            <span className="app-sidebar__status-value">{networkLabel}</span>
-          </span>
-          <span className="app-sidebar__status-line">
-            <span className="app-sidebar__status-key">Roles</span>
-            <span className="app-sidebar__status-value">
-              {normalizedRoles.length > 0 ? normalizedRoles.join(" · ") : "none"}
-            </span>
-          </span>
-          <span className="app-sidebar__status-line">
-            <span className="app-sidebar__status-key">Address</span>
-            <span className="app-sidebar__status-value">
-              {loggedIn ? formatAddress(addr) : "—"}
-            </span>
-          </span>
-        </div>
-      </div>
-      <div className="app-sidebar__section app-sidebar__section--points">
-        <p className="app-sidebar__label">Points</p>
-        {loggedIn ? (
-          <div className="app-sidebar__points-card" data-loading={isLoadingPoints ? "true" : "false"}>
-            <div className="app-sidebar__points-total">
-              <span className="app-sidebar__points-value">{formattedPoints}</span>
-              <span className="app-sidebar__points-hint">total balance</span>
+      
+      {/* Only show Session and Points sections when logged in */}
+      {loggedIn && (
+        <>
+          <div className="app-sidebar__section app-sidebar__section--status">
+            <p className="app-sidebar__label">Session</p>
+            <div className="app-sidebar__status-card">
+              <span className="app-sidebar__status-line">
+                <span className="app-sidebar__status-key">Network</span>
+                <span className="app-sidebar__status-value">{networkLabel}</span>
+              </span>
+              <span className="app-sidebar__status-line">
+                <span className="app-sidebar__status-key">Roles</span>
+                <span className="app-sidebar__status-value">
+                  {normalizedRoles.length > 0 ? normalizedRoles.join(" · ") : "none"}
+                </span>
+              </span>
+              <span className="app-sidebar__status-line">
+                <span className="app-sidebar__status-key">Address</span>
+                <span className="app-sidebar__status-value">
+                  {formatAddress(addr)}
+                </span>
+              </span>
             </div>
-            {pointsError ? (
-              <p className="app-sidebar__points-error">{pointsError}</p>
-            ) : (
-              <ul className="app-sidebar__leaderboard">
-                {leaderboard.map((entry) => {
-                  const isCurrent = highlightedRank?.address === entry.address;
-                  return (
-                    <li key={entry.address} data-current={isCurrent ? "true" : "false"}>
-                      <span className="app-sidebar__leaderboard-rank">{entry.rank}</span>
-                      <span className="app-sidebar__leaderboard-address">
-                        {formatLeaderboardAddress(entry.address)}
-                      </span>
-                      <span className="app-sidebar__leaderboard-total">
-                        {new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }).format(entry.total)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
           </div>
-        ) : (
-          <p className="app-sidebar__muted">Sign in to track your points</p>
-        )}
-      </div>
+          
+          <div className="app-sidebar__section app-sidebar__section--points">
+            <p className="app-sidebar__label">Points</p>
+            <div className="app-sidebar__points-card" data-loading={isLoadingPoints ? "true" : "false"}>
+              <div className="app-sidebar__points-total">
+                <span className="app-sidebar__points-value">{formattedPoints}</span>
+                <span className="app-sidebar__points-hint">your balance</span>
+              </div>
+              {pointsError && (
+                <p className="app-sidebar__points-error">{pointsError}</p>
+              )}
+            </div>
+          </div>
+        </>
+      )}
     </aside>
   );
 };
