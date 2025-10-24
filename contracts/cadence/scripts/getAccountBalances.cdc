@@ -2,9 +2,9 @@ import FungibleToken from "FungibleToken"
 import FlowToken from "FlowToken"
 import OutcomeToken from "OutcomeToken"
 
-pub struct AccountMarketBalances {
-    pub let flowBalance: UFix64
-    pub let outcomeBalance: UFix64
+access(all) struct AccountMarketBalances {
+    access(all) let flowBalance: UFix64
+    access(all) let outcomeBalance: UFix64
 
     init(flowBalance: UFix64, outcomeBalance: UFix64) {
         self.flowBalance = flowBalance
@@ -12,7 +12,7 @@ pub struct AccountMarketBalances {
     }
 }
 
-pub fun main(account: Address, marketId: UInt64): AccountMarketBalances {
+access(all) fun main(account: Address, marketId: UInt64): AccountMarketBalances {
     let flowCapability = getAccount(account)
         .getCapability<&FlowToken.Vault{FungibleToken.Balance}>(/public/flowTokenBalance)
 

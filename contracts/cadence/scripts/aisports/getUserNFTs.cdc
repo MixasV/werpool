@@ -1,11 +1,11 @@
 import aiSportsMinter from 0xabe5a2bf47ce5bf3
 import NonFungibleToken from 0x1d7e57aa55817448
 
-pub struct NFTInfo {
-    pub let id: UInt64
-    pub let rarity: String
-    pub let r#type: String
-    pub let metadata: {String: AnyStruct}
+access(all) struct NFTInfo {
+    access(all) let id: UInt64
+    access(all) let rarity: String
+    access(all) let r#type: String
+    access(all) let metadata: {String: AnyStruct}
 
     init(id: UInt64, rarity: String, r#type: String, metadata: {String: AnyStruct}) {
         self.id = id
@@ -15,7 +15,7 @@ pub struct NFTInfo {
     }
 }
 
-pub fun main(userAddress: Address): [NFTInfo] {
+access(all) fun main(userAddress: Address): [NFTInfo] {
     let account = getAccount(userAddress)
     let capability = account.getCapability<&{NonFungibleToken.CollectionPublic}>(/public/aiSportsNFTCollection)
     let collection = capability.borrow()

@@ -21,7 +21,7 @@
     "@nestjs/platform-socket.io": "10",
     "@nestjs/throttler": "^5.2.0",
     "@nestjs/websockets": "10",
-    "@onflow/fcl": "^1.20.2",
+    "@onflow/fcl": "^1.20.3",
     "@prisma/client": "5.19.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",

@@ -107,7 +107,14 @@ export class FlowAuthService {
       throw new UnauthorizedException("Challenge expired");
     }
 
+    // Debug logging
+    console.log('[FlowAuth] Raw signatures received:', JSON.stringify(params.signatures, null, 2));
+    
     const signatures = this.validateSignatures(params.signatures, normalized);
+    
+    console.log('[FlowAuth] Validated signatures:', JSON.stringify(signatures, null, 2));
+    console.log('[FlowAuth] Nonce:', flowUser.nonce);
+    
     const appUtils = (fcl as unknown as {
       AppUtils: {
         verifyUserSignatures: (
@@ -210,7 +217,7 @@ export class FlowAuthService {
       throw new BadRequestException("signatures are required");
     }
 
-    return signatures.map((signature) => {
+    return signatures.map((signature: any) => {
       if (
         !signature ||
         typeof signature.addr !== "string" ||
@@ -225,10 +232,13 @@ export class FlowAuthService {
         throw new UnauthorizedException("Signature must match address");
       }
 
+      // Preserve f_type and f_vsn if present (required by FCL 1.20.3+)
       return {
         addr: normalizedAddr,
         signature: signature.signature,
         keyId: signature.keyId,
+        ...(signature.f_type && { f_type: signature.f_type }),
+        ...(signature.f_vsn && { f_vsn: signature.f_vsn }),
       };
     });
   }
@@ -243,6 +253,8 @@ export class FlowAuthService {
     }
 
     const { accessNode, network, contracts } = resolveBackendFlowConfig();
+    
+    console.log('[FlowAuth] Configuring FCL with:', { accessNode, network });
 
     fcl
       .config()

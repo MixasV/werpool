@@ -66,7 +66,12 @@ export const resolveBackendFlowConfig = (): BackendFlowConfig => {
   const network = resolveNetworkId();
   const preset = NETWORK_PRESETS[network];
 
+  console.log('[Flow Config] process.env.FLOW_ACCESS_NODE:', process.env.FLOW_ACCESS_NODE);
+  console.log('[Flow Config] preset.accessNode:', preset.accessNode);
+  
   const accessNode = process.env.FLOW_ACCESS_NODE?.trim() || preset.accessNode;
+  
+  console.log('[Flow Config] Final accessNode:', accessNode);
 
   return {
     network,

@@ -9,8 +9,6 @@ interface ContractPreset {
 interface FlowNetworkPreset {
   accessNode: string;
   discoveryWallet: string;
-  discoveryAuthn?: string;
-  walletMethod?: string;
   contracts: ContractPreset;
 }
 
@@ -27,8 +25,6 @@ const NETWORK_PRESETS: Record<FlowNetworkId, FlowNetworkPreset> = {
   testnet: {
     accessNode: "https://rest-testnet.onflow.org",
     discoveryWallet: "https://fcl-discovery.onflow.org/testnet/authn",
-    discoveryAuthn: "https://fcl-discovery.onflow.org/testnet/authn",
-    walletMethod: "POP/RPC",
     contracts: {
       coreMarketHub: "0x3ea7ac2bcdd8bcef",
       lmsrAmm: "0x3ea7ac2bcdd8bcef",
@@ -38,8 +34,6 @@ const NETWORK_PRESETS: Record<FlowNetworkId, FlowNetworkPreset> = {
   mainnet: {
     accessNode: "https://rest-mainnet.onflow.org",
     discoveryWallet: "https://fcl-discovery.onflow.org/authn",
-    discoveryAuthn: "https://fcl-discovery.onflow.org/authn",
-    walletMethod: "POP/RPC",
     contracts: {
       coreMarketHub: "0x0000000000000000",
       lmsrAmm: "0x0000000000000000",
@@ -67,8 +61,6 @@ export interface ResolvedFlowConfig {
   network: FlowNetworkId;
   accessNode: string;
   discoveryWallet: string;
-  discoveryAuthn: string;
-  walletMethod?: string;
   appTitle: string;
   appIcon: string;
   contracts: ContractPreset;
@@ -86,8 +78,6 @@ export const resolveFlowConfig = (): ResolvedFlowConfig => {
   const accessNode = process.env.NEXT_PUBLIC_FLOW_ACCESS_NODE?.trim() || preset.accessNode;
   const discoveryWallet =
     process.env.NEXT_PUBLIC_FLOW_WALLET_URL?.trim() || preset.discoveryWallet;
-  const discoveryAuthn =
-    process.env.NEXT_PUBLIC_FLOW_AUTHN_URL?.trim() || preset.discoveryAuthn || discoveryWallet;
 
   const contracts: ContractPreset = {
     coreMarketHub: resolveContractAddress(
@@ -108,8 +98,6 @@ export const resolveFlowConfig = (): ResolvedFlowConfig => {
     network,
     accessNode,
     discoveryWallet,
-    discoveryAuthn,
-    walletMethod: process.env.NEXT_PUBLIC_FLOW_WALLET_METHOD?.trim() || preset.walletMethod,
     appTitle: process.env.NEXT_PUBLIC_FLOW_APP_TITLE?.trim() || "Forte Prediction Markets",
     appIcon: process.env.NEXT_PUBLIC_FLOW_APP_ICON?.trim() || "",
     contracts,

@@ -199,7 +199,7 @@ export class TopShotService {
           }
       }
 
-      pub fun main(account: Address, limit: Int): [MomentDetail] {
+      access(all) fun main(account: Address, limit: Int): [MomentDetail] {
           let target = getAccount(account)
           let capability = target.getCapability<&TopShot.Collection{TopShot.MomentCollectionPublic}>(/public/MomentCollection)
           let collection = capability.borrow()

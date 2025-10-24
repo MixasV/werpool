@@ -12,7 +12,7 @@
     "test:e2e:debug": "pw-test --debug"
   },
   "dependencies": {
-    "@onflow/fcl": "^1.20.2",
+    "@onflow/fcl": "^1.20.3",
     "next": "^14.2.4",
     "pino-pretty": "^13.1.1",
     "react": "^18.3.1",

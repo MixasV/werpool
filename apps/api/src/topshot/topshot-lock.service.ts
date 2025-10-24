@@ -191,6 +191,31 @@ export class TopShotLockService {
     });
   }
 
+  async createLock(userAddress: string, dto: any): Promise<TopShotMomentLockDto> {
+    throw new Error("createLock not yet implemented");
+  }
+
+  async updateLock(lockId: string, userAddress: string, dto: any): Promise<TopShotMomentLockDto> {
+    throw new Error("updateLock not yet implemented");
+  }
+
+  async getUserLocks(userAddress: string): Promise<TopShotMomentLockDto[]> {
+    const normalized = userAddress.toLowerCase();
+    const locks = await this.prisma.topShotMomentLock.findMany({
+      where: { userAddress: normalized },
+      orderBy: { createdAt: 'desc' },
+    });
+    return locks.map(this.toDto);
+  }
+
+  async getMarketLocks(marketId: string): Promise<TopShotMomentLockDto[]> {
+    const locks = await this.prisma.topShotMomentLock.findMany({
+      where: { marketId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return locks.map(this.toDto);
+  }
+
   buildProjectedBonus(moment: TopShotMomentDetail, params: {
     marketId: string;
     eventId: string;

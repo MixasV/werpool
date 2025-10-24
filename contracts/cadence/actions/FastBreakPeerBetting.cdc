@@ -5,14 +5,14 @@ import FlowToken from 0x7e60df042a9c0868
 // Demonstrates Source, Sink, Swapper, and PriceOracle patterns
 
 // Source - Withdraw FLOW for betting
-pub struct BettingSource {
-    pub let userAddress: Address
+access(all) struct BettingSource {
+    access(all) let userAddress: Address
     
     init(userAddress: Address) {
         self.userAddress = userAddress
     }
     
-    pub fun withdraw(amount: UFix64): @FungibleToken.Vault {
+    access(all) fun withdraw(amount: UFix64): @FungibleToken.Vault {
         let account = getAccount(self.userAddress)
         let vaultRef = account
             .getCapability(/public/flowTokenBalance)
@@ -24,16 +24,16 @@ pub struct BettingSource {
 }
 
 // Sink - Accept opponent's matching bet
-pub struct MatchingBetSink {
-    pub let challengeId: String
-    pub let requiredAmount: UFix64
+access(all) struct MatchingBetSink {
+    access(all) let challengeId: String
+    access(all) let requiredAmount: UFix64
     
     init(challengeId: String, requiredAmount: UFix64) {
         self.challengeId = challengeId
         self.requiredAmount = requiredAmount
     }
     
-    pub fun tryDeposit(from: @FungibleToken.Vault): @FungibleToken.Vault? {
+    access(all) fun tryDeposit(from: @FungibleToken.Vault): @FungibleToken.Vault? {
         // Verify amount matches
         assert(
             from.balance == self.requiredAmount,
@@ -53,9 +53,9 @@ pub struct MatchingBetSink {
 }
 
 // PriceOracle - FastBreak rankings as odds
-pub struct FastBreakOdds {
+access(all) struct FastBreakOdds {
     
-    pub fun price(playerAddress: Address): UFix64? {
+    access(all) fun price(playerAddress: Address): UFix64? {
         // Get player's current FastBreak rank
         let rank = self.getCurrentRank(playerAddress)
         
@@ -86,14 +86,14 @@ pub struct FastBreakOdds {
 }
 
 // Swapper - Bet execution
-pub struct PeerBetSwapper {
-    pub let challengeId: String
+access(all) struct PeerBetSwapper {
+    access(all) let challengeId: String
     
     init(challengeId: String) {
         self.challengeId = challengeId
     }
     
-    pub fun swap(from: @FungibleToken.Vault): @FungibleToken.Vault {
+    access(all) fun swap(from: @FungibleToken.Vault): @FungibleToken.Vault {
         let amount = from.balance
         
         // FLOW → Bet Position
@@ -109,11 +109,11 @@ pub struct PeerBetSwapper {
 }
 
 // Events
-pub event BetMatched(challengeId: String, amount: UFix64)
-pub event BetPlaced(challengeId: String, amount: UFix64)
+access(all) event BetMatched(challengeId: String, amount: UFix64)
+access(all) event BetPlaced(challengeId: String, amount: UFix64)
 
 // Example transaction using Flow Actions
-pub fun acceptChallengeWithActions(
+access(all) fun acceptChallengeWithActions(
     challengeId: String,
     betAmount: UFix64,
     signerAddress: Address

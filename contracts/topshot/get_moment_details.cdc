@@ -1,16 +1,16 @@
 import TopShot from 0x0b2a3299cc857e29
 
-pub struct MomentDetail {
-    pub let id: UInt64
-    pub let playId: UInt32
-    pub let setId: UInt32
-    pub let serialNumber: UInt32
-    pub let fullName: String?
-    pub let teamName: String?
-    pub let teamId: String?
-    pub let primaryPosition: String?
-    pub let jerseyNumber: String?
-    pub let tier: String?
+access(all) struct MomentDetail {
+    access(all) let id: UInt64
+    access(all) let playId: UInt32
+    access(all) let setId: UInt32
+    access(all) let serialNumber: UInt32
+    access(all) let fullName: String?
+    access(all) let teamName: String?
+    access(all) let teamId: String?
+    access(all) let primaryPosition: String?
+    access(all) let jerseyNumber: String?
+    access(all) let tier: String?
 
     init(
         id: UInt64,
@@ -37,7 +37,7 @@ pub struct MomentDetail {
     }
 }
 
-pub fun main(account: Address, limit: Int?): [MomentDetail] {
+access(all) fun main(account: Address, limit: Int?): [MomentDetail] {
     let target = getAccount(account)
     let capability = target.getCapability<&TopShot.Collection{TopShot.MomentCollectionPublic}>(/public/MomentCollection)
     let collection = capability.borrow()

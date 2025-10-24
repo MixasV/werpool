@@ -1,7 +1,7 @@
 import MFL from 0x683564e46977788a
 
 // Get tournament details from MFL contract
-pub fun main(tournamentId: UInt64): TournamentData? {
+access(all) fun main(tournamentId: UInt64): TournamentData? {
   let tournament = MFL.getTournament(tournamentId: tournamentId)
   
   if tournament == nil {
@@ -19,14 +19,14 @@ pub fun main(tournamentId: UInt64): TournamentData? {
   )
 }
 
-pub struct TournamentData {
-  pub let id: UInt64
-  pub let name: String
-  pub let status: String
-  pub let startDate: UFix64
-  pub let endDate: UFix64
-  pub let participantCount: UInt32
-  pub let winner: Address?
+access(all) struct TournamentData {
+  access(all) let id: UInt64
+  access(all) let name: String
+  access(all) let status: String
+  access(all) let startDate: UFix64
+  access(all) let endDate: UFix64
+  access(all) let participantCount: UInt32
+  access(all) let winner: Address?
   
   init(
     id: UInt64,

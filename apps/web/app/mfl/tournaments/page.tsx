@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { fetchMFLTournaments } from '@/app/lib/mfl-api';
+import { fetchMFLTournaments } from '../../lib/mfl-api';
 
 export default async function MFLTournamentsPage() {
   const tournaments = await fetchMFLTournaments();

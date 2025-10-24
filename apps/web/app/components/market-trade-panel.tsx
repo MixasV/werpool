@@ -21,6 +21,7 @@ import {
 import { useFlowWallet } from "../providers/flow-wallet-provider";
 import { ExecutionStatus } from "./execution-status";
 import { subscribeToPoolState, subscribeToTrades } from "../lib/market-realtime";
+import { useUserSignedTrade } from "../hooks/useUserSignedTrade";
 
 interface MarketTradePanelProps {
   outcomes: MarketDetail["outcomes"];
@@ -199,15 +200,37 @@ export const MarketTradePanel = ({
   const [priceImpact, setPriceImpact] = useState<number | null>(null);
   const [isQuoting, startQuote] = useTransition();
   const [isExecuting, startExecute] = useTransition();
-  const { addr, loggedIn, isReady, logIn, logOut, sessionToken, network: walletNetwork } =
+  const { addr, loggedIn, isReady, logIn, logOut, sessionToken, network: walletNetwork, authMode } =
     useFlowWallet();
   const [topShotOptions, setTopShotOptions] = useState<TopShotProjectedBonus[]>([]);
+
+  const {
+    executeTrade: executeBlockchainTrade,
+    transactionState,
+    isPreparingTx,
+    canUseUserSigning,
+    reset: resetBlockchainTx,
+  } = useUserSignedTrade({
+    marketId: Number(marketId),
+    onSuccess: (txId) => {
+      finalizeExecution({
+        transactionId: txId,
+        signer: addr ?? "",
+        network: resolvedNetwork,
+        ...quote!,
+      } as ExecuteTradeResult);
+    },
+    onError: (error) => {
+      setError(error.message);
+    },
+  });
   const [topShotLock, setTopShotLock] = useState<TopShotMomentLock | null>(null);
   const [topShotLoading, setTopShotLoading] = useState(false);
   const [topShotError, setTopShotError] = useState<string | null>(null);
   const [topShotDirty, setTopShotDirty] = useState(false);
   const [selectedTopShotMomentId, setSelectedTopShotMomentId] = useState<string | null>(null);
   const [topShotReloadToken, setTopShotReloadToken] = useState(0);
+  const [useBlockchain, setUseBlockchain] = useState(true);
 
   const hasOutcomes = outcomes.length > 0;
   const selectedOutcome = useMemo(
@@ -677,10 +700,21 @@ export const MarketTradePanel = ({
     startExecute(async () => {
       setError(null);
       try {
-        const response = await onExecute(pendingPayload);
-        await finalizeExecution(response);
-        setConfirmOpen(false);
-        setPendingPayload(null);
+        if (useBlockchain && canUseUserSigning && quote) {
+          await executeBlockchainTrade({
+            outcomeIndex: pendingPayload.outcomeIndex,
+            shares: pendingPayload.shares,
+            isBuy: pendingPayload.isBuy,
+            quote,
+          });
+          setConfirmOpen(false);
+          setPendingPayload(null);
+        } else {
+          const response = await onExecute(pendingPayload);
+          await finalizeExecution(response);
+          setConfirmOpen(false);
+          setPendingPayload(null);
+        }
       } catch (executeError) {
         console.error("Failed to execute trade", executeError);
         setError(executeError instanceof Error ? executeError.message : "Trade execution failed");
@@ -736,6 +770,28 @@ export const MarketTradePanel = ({
                 Outcome balance: {isBalancesLoading ? "Loading…" : balances ? formatShares(balances.outcomeBalance) : "—"}
               </p>
               {balanceError && <p className="error-text">{balanceError}</p>}
+              {canUseUserSigning && (
+                <div className="market-trade__mode-toggle">
+                  <label className="field checkbox">
+                    <input
+                      type="checkbox"
+                      checked={useBlockchain}
+                      onChange={(e) => setUseBlockchain(e.target.checked)}
+                    />
+                    <span>Use Blockchain (sign with wallet)</span>
+                  </label>
+                  {!useBlockchain && (
+                    <p className="muted" style={{ fontSize: "0.85rem", marginTop: "0.25rem" }}>
+                      ⚠️ Backend-only mode: trades will NOT be on Flow blockchain
+                    </p>
+                  )}
+                  {useBlockchain && authMode === "wallet" && (
+                    <p className="muted" style={{ fontSize: "0.85rem", marginTop: "0.25rem" }}>
+                      ✅ Blockchain mode: you will sign transactions with your wallet
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -874,6 +930,33 @@ export const MarketTradePanel = ({
             <h3>Results</h3>
             {error && <p className="error-text">{error}</p>}
             {poolError && <p className="error-text">{poolError}</p>}
+            {useBlockchain && transactionState.status !== "idle" && (
+              <div className="blockchain-tx-status">
+                <h4>Blockchain Transaction</h4>
+                <p>
+                  Status: <strong>{transactionState.status}</strong>
+                  {isPreparingTx && " (preparing...)"}
+                </p>
+                {transactionState.txId && (
+                  <p>
+                    TX ID:{" "}
+                    <a
+                      href={`https://testnet.flowscan.io/transaction/${transactionState.txId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {transactionState.txId.slice(0, 8)}...
+                    </a>
+                  </p>
+                )}
+                {transactionState.errorMessage && (
+                  <p className="error-text">{transactionState.errorMessage}</p>
+                )}
+                {transactionState.status === "sealed" && (
+                  <p style={{ color: "#00ff00" }}>✅ Transaction confirmed on blockchain!</p>
+                )}
+              </div>
+            )}
             {quote ? (
               <dl className="quote-grid">
                 <div>

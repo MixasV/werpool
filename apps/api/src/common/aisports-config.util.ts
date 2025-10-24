@@ -46,9 +46,9 @@ const PRESETS: Record<AiSportsNetwork, AiSportsPreset> = {
     accessNode: "https://rest-testnet.onflow.org",
     discoveryWallet: "https://fcl-discovery.onflow.org/testnet/authn",
     contracts: {
-      minter: "0xf8ba321af4bd37bb",   // All aiSports contracts on testnet
-      juice: "0xf8ba321af4bd37bb",    // Same address for all testnet contracts
-      escrow: "0xf8ba321af4bd37bb",   // Same address for all testnet contracts
+      minter: "0xf8ba321af4bd37ba",   // All aiSports contracts on testnet
+      juice: "0xf8ba321af4bd37ba",    // Same address for all testnet contracts
+      escrow: "0xf8ba321af4bd37ba",   // Same address for all testnet contracts
     },
   },
   mainnet: {

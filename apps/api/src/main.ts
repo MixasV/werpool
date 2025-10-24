@@ -2,6 +2,7 @@ import { config as loadEnv } from "dotenv";
 import { resolve } from "node:path";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { IoAdapter } from "@nestjs/platform-socket.io";
 import helmet from "helmet";
 import { AppModule } from "./app.module";
 import { PrismaService } from "./prisma/prisma.service";
@@ -11,6 +12,9 @@ loadEnv({ path: resolve(__dirname, "../../.env"), override: false });
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  
+  // Enable WebSocket support
+  app.useWebSocketAdapter(new IoAdapter(app));
   
   // Security headers
   app.use(

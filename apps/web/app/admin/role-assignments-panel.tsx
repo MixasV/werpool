@@ -165,35 +165,29 @@ export const RoleAssignmentsPanel = ({ initialRoles, directory }: RoleAssignment
       });
       setFlowDirectory((prev) => {
         const existing = prev.find((item) => item.address.toLowerCase() === assignment.address.toLowerCase());
-        const updatedRole = assignment;
         if (!existing) {
           return [
             {
               address: assignment.address,
-              label: normalizedLabel,
-              firstSeenAt: new Date().toISOString(),
-              lastSeenAt: new Date().toISOString(),
-              roles: [updatedRole],
+              roles: [assignment.role],
             },
             ...prev,
           ];
         }
 
-        const nextRoles = existing.roles.filter((role) => role.id !== updatedRole.id);
-        nextRoles.unshift(updatedRole);
+        const nextRoles = existing.roles.includes(assignment.role) 
+          ? existing.roles 
+          : [assignment.role, ...existing.roles];
 
         return prev
           .map((item) =>
             item.address.toLowerCase() === assignment.address.toLowerCase()
               ? {
                   ...item,
-                  lastSeenAt: new Date().toISOString(),
-                  label: normalizedLabel ?? item.label,
                   roles: nextRoles,
                 }
               : item
-          )
-          .sort((a, b) => (b.lastSeenAt ?? b.firstSeenAt).localeCompare(a.lastSeenAt ?? a.firstSeenAt));
+          );
       });
       setStatus("Role granted successfully");
       router.refresh();
@@ -222,7 +216,7 @@ export const RoleAssignmentsPanel = ({ initialRoles, directory }: RoleAssignment
           item.address.toLowerCase() === removed.address.toLowerCase()
             ? {
                 ...item,
-                roles: item.roles.filter((role) => role.id !== removed.id),
+                roles: item.roles.filter((role) => role !== removed.role),
               }
             : item
         )
@@ -354,7 +348,7 @@ export const RoleAssignmentsPanel = ({ initialRoles, directory }: RoleAssignment
             <div key={assignment.id} className="admin-table__row">
               <span>{assignment.address}</span>
               <span className="admin-badge">{getRoleLabel(assignment.role)}</span>
-              <span>{formatDateTime(assignment.createdAt)}</span>
+              <span>{assignment.createdAt ? formatDateTime(assignment.createdAt) : formatDateTime(assignment.grantedAt)}</span>
               <button
                 type="button"
                 className="button tertiary"
@@ -381,21 +375,19 @@ export const RoleAssignmentsPanel = ({ initialRoles, directory }: RoleAssignment
           flowDirectory.map((user) => (
             <div key={user.address} className="admin-table__row admin-table__row--directory">
               <span>{user.address}</span>
-              <span className={user.label ? "" : "admin-table__roles--muted"}>
-                {user.label ?? "—"}
-              </span>
+              <span>—</span>
               <span className="admin-table__roles-list">
                 {user.roles.length === 0 ? (
                   <span className="admin-table__roles-empty">No roles</span>
                 ) : (
                   user.roles.map((role) => (
-                    <span key={role.id} className="admin-badge">
-                      {getRoleLabel(role.role)}
+                    <span key={role} className="admin-badge">
+                      {getRoleLabel(role)}
                     </span>
                   ))
                 )}
               </span>
-              <span>{formatDateTime(user.lastSeenAt ?? user.firstSeenAt)}</span>
+              <span>—</span>
             </div>
           ))
         )}

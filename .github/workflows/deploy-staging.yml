@@ -1,0 +1,73 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build applications
+        run: pnpm build
+
+      - name: Run tests
+        run: pnpm test --run
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+
+      - name: Deploy to staging
+        run: |
+          echo "Deployment to staging would happen here"
+          echo "Using Docker Compose or cloud provider CLI"
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_API_KEY: ${{ secrets.STAGING_API_KEY }}
+
+      - name: Run database migrations
+        run: |
+          cd apps/api
+          pnpm prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+
+      - name: Seed staging data
+        run: |
+          cd apps/api
+          ts-node ../../scripts/seed-staging.ts
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+
+      - name: Verify deployment
+        run: |
+          curl -f ${{ secrets.STAGING_URL }}/health || exit 1
+
+      - name: Notify success
+        if: success()
+        run: |
+          echo "✅ Staging deployment successful!"
+          
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "❌ Staging deployment failed!"

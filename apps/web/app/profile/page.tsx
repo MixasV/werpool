@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 const getProfile = cache(() => fetchMyProfile({ allowApiTokenFallback: false }));
 const getPointsSummary = cache(() => fetchMyPointsSummary({ allowApiTokenFallback: false }));
-const getRolePurchases = cache(() => fetchMyRolePurchaseRequests({ allowApiTokenFallback: false }));
+const getRolePurchases = cache(() => fetchMyRolePurchaseRequests());
 
 const sessionCookieName = process.env.NEXT_PUBLIC_FLOW_SESSION_COOKIE ?? "flow_session";
 

@@ -80,7 +80,7 @@ interface AnalyticsEventPayload {
 @WebSocketGateway({
   namespace: "markets",
   cors: { origin: true, credentials: true },
-  transports: ["websocket"],
+  transports: ["websocket", "polling"],
 })
 export class MarketUpdatesGateway
   implements OnGatewayConnection<Socket>, OnGatewayDisconnect<Socket>

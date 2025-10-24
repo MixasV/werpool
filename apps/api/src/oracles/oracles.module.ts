@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { OraclesController } from "./oracles.controller";
 import { CryptoOracleService } from "./crypto-oracle.service";
 import { SportsOracleService } from "./sports-oracle.service";
+import { FlowVolumeOracleService } from "./flow-volume-oracle.service";
 import { NBAStatsClient } from "./providers/nba-stats.client";
 import { AuthModule } from "../auth/auth.module";
 import { MetaPredictionService } from "./aisports/meta-prediction.service";
@@ -18,6 +19,7 @@ import { NFTBoostService } from "../aisports/nft-boost/nft-boost.service";
   providers: [
     CryptoOracleService,
     SportsOracleService,
+    FlowVolumeOracleService,
     NBAStatsClient,
     MetaPredictionService,
     AiSportsOracleService,
@@ -25,6 +27,13 @@ import { NFTBoostService } from "../aisports/nft-boost/nft-boost.service";
     AiSportsFlowService,
     NFTBoostService,
   ],
-  exports: [CryptoOracleService, SportsOracleService, NBAStatsClient, MetaPredictionService, AiSportsOracleService],
+  exports: [
+    CryptoOracleService,
+    SportsOracleService,
+    FlowVolumeOracleService,
+    NBAStatsClient,
+    MetaPredictionService,
+    AiSportsOracleService,
+  ],
 })
 export class OraclesModule {}

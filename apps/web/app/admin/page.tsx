@@ -169,6 +169,16 @@ const getBasePayload = (formData: FormData) => {
 export default async function AdminPage() {
   const auth = getSessionAuth();
 
+  // Skip protected data fetching if not authorized
+  if (!auth.token) {
+    return (
+      <main className="container">
+        <h1>Admin Panel</h1>
+        <p>Требуется авторизация. Пожалуйста, войдите с помощью Flow кошелька.</p>
+      </main>
+    );
+  }
+
   const [markets, roles, directory, rolePurchaseRequests, monitoring, schedulerTasks, leaderboard, snapshots]: [
     MarketSummary[],
     RoleAssignment[],
@@ -180,8 +190,8 @@ export default async function AdminPage() {
     LeaderboardSnapshot[],
   ] = await Promise.all([
     fetchMarkets(),
-    fetchRoleAssignments(auth),
-    fetchRoleDirectory(auth),
+    fetchRoleAssignments().catch(() => []),
+    fetchRoleDirectory().catch(() => []),
     fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/admin/role-purchase`, {
       headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {},
     }).then(r => r.ok ? r.json() : []).catch(() => []),
@@ -308,25 +318,29 @@ export default async function AdminPage() {
       throw new Error("Enter a Flow account address");
     }
 
-    if (role !== "admin" && role !== "operator" && role !== "oracle" && role !== "patrol") {
+    const upperRole = role.toUpperCase() as RoleType;
+    if (upperRole !== "ADMIN" && upperRole !== "MARKET_MAKER" && upperRole !== "ORACLE" && upperRole !== "PATROL") {
       throw new Error("Unsupported role");
     }
 
-    const label = typeof labelRaw === "string" && labelRaw.trim().length > 0 ? labelRaw.trim() : undefined;
-
-    await assignRole({ address, role, label }, getSessionAuth());
+    await assignRole(address, upperRole);
     revalidatePath(ADMIN_PATH);
   };
 
   const revokeRoleAction = async (formData: FormData) => {
     "use server";
 
-    const id = formData.get("assignmentId");
-    if (typeof id !== "string" || id.trim().length === 0) {
-      throw new Error("Role assignment identifier is missing");
+    const address = formData.get("address");
+    const role = formData.get("role");
+    
+    if (typeof address !== "string" || address.trim().length === 0) {
+      throw new Error("Address is missing");
+    }
+    if (typeof role !== "string" || role.trim().length === 0) {
+      throw new Error("Role is missing");
     }
 
-    await revokeRole(id.trim(), getSessionAuth());
+    await revokeRole(address.trim(), role.trim() as RoleType);
     revalidatePath(ADMIN_PATH);
   };
 
@@ -962,9 +976,10 @@ export default async function AdminPage() {
                     <div key={assignment.id} className="admin-table__row">
                       <span>{assignment.address}</span>
                       <span className="admin-badge">{assignment.role}</span>
-                      <span>{formatDateTime(assignment.createdAt)}</span>
+                      <span>{assignment.createdAt ? formatDateTime(assignment.createdAt) : formatDateTime(assignment.grantedAt)}</span>
                       <form action={revokeRoleAction}>
-                        <input type="hidden" name="assignmentId" value={assignment.id} />
+                        <input type="hidden" name="address" value={assignment.address} />
+                        <input type="hidden" name="role" value={assignment.role} />
                         <button type="submit" className="button tertiary">
                           Revoke
                         </button>

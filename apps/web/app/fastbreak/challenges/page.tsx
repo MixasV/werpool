@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { fetchFastBreakChallenges } from '@/app/lib/fastbreak-api';
+import { fetchFastBreakChallenges } from '../../lib/fastbreak-api';
 
 export default async function FastBreakChallengesPage() {
   const challenges = await fetchFastBreakChallenges();

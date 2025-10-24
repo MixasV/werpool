@@ -735,7 +735,8 @@ export class MetaPredictionService {
     }
 
     if (requirements.requiredNftRarity && requirements.requiredNftRarity.length > 0) {
-      const hasRequired = user.nfts.some((nft) => requirements.requiredNftRarity!.includes(nft.rarity));
+      const nfts = Array.isArray(user.nfts) ? user.nfts : [];
+      const hasRequired = nfts.some((nft) => requirements.requiredNftRarity!.includes(nft.rarity));
       if (!hasRequired) {
         return false;
       }

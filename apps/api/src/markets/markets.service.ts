@@ -90,6 +90,7 @@ import { TopShotProjectedBonus, TopShotMomentLockDto } from "../topshot/topshot.
 
 type PrismaMarketWithRelations = PrismaMarket & {
   liquidityPool: PrismaLiquidityPool | null;
+  poolState: { flowMarketId: number } | null;
   outcomes: PrismaOutcome[];
   workflow: PrismaWorkflowAction[];
   settlement: PrismaSettlement | null;
@@ -393,9 +394,9 @@ export class MarketsService {
   }
 
   async getPoolState(marketId: string): Promise<MarketPoolStateDto> {
-    const parsedMarketId = this.parseMarketId(marketId);
-    const marketRecord = await this.getMarketRecord(parsedMarketId);
-    return this.poolStateService.getState(parsedMarketId, marketRecord.id);
+    const marketRecord = await this.getMarketRecordByIdOrSlug(marketId);
+    const numericMarketId = this.getNumericMarketId(marketRecord);
+    return this.poolStateService.getState(numericMarketId, marketRecord.id);
   }
 
   async getMarketStorage(marketId: string): Promise<MarketStorageMetadataDto> {
@@ -418,11 +419,20 @@ export class MarketsService {
     marketId: string,
     address: string
   ): Promise<{ flowBalance: string; outcomeBalance: string }> {
-    const parsedMarketId = this.parseMarketId(marketId);
+    const marketRecord = await this.getMarketRecordByIdOrSlug(marketId);
+    
+    if (!marketRecord.poolState?.flowMarketId) {
+      return {
+        flowBalance: "0.00000000",
+        outcomeBalance: "0.00000000",
+      };
+    }
+    
+    const numericMarketId = this.getNumericMarketId(marketRecord);
     const normalizedAddress = normalizeFlowAddress(address);
     const balances = await this.flowMarketService.getAccountBalances(
       normalizedAddress,
-      parsedMarketId
+      numericMarketId
     );
 
     return {
@@ -1966,8 +1976,7 @@ export class MarketsService {
       limit?: number;
     } = {}
   ): Promise<MarketAnalyticsSnapshotDto[]> {
-    const parsedMarketId = this.parseMarketId(marketId);
-    const marketRecord = await this.getMarketRecord(parsedMarketId);
+    const marketRecord = await this.getMarketRecordByIdOrSlug(marketId);
     const interval = this.resolveAnalyticsInterval(options.interval);
     const normalizedOutcomeIndex =
       typeof options.outcomeIndex === "number" &&
@@ -2383,6 +2392,13 @@ export class MarketsService {
   }
 
   private parseMarketId(value: string): number {
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidPattern.test(value)) {
+      throw new BadRequestException(
+        "Market id must be a numeric on-chain ID, not a UUID. Use findOne(slug) to get the numeric ID first."
+      );
+    }
+    
     const parsed = Number(value);
     if (!Number.isFinite(parsed) || parsed < 0) {
       throw new BadRequestException("Market id must be a positive number");
@@ -2789,6 +2805,30 @@ export class MarketsService {
     }
 
     return market;
+  }
+
+  private async getMarketRecordByIdOrSlug(idOrSlug: string): Promise<PrismaMarketWithRelations> {
+    const market = await this.prisma.market.findFirst({
+      where: {
+        OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      },
+      include: includeMarketRelations,
+    });
+
+    if (!market) {
+      throw new NotFoundException(`Market ${idOrSlug} not found`);
+    }
+
+    return market;
+  }
+
+  private getNumericMarketId(market: PrismaMarketWithRelations): number {
+    if (market.poolState?.flowMarketId) {
+      return market.poolState.flowMarketId;
+    }
+    throw new BadRequestException(
+      `Market ${market.slug} does not have a pool state with on-chain ID. Create liquidity pool first.`
+    );
   }
 
   private resolveSignerAndNetwork(

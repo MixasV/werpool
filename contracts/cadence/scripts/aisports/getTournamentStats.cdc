@@ -1,10 +1,10 @@
 import aiSportsEscrow from 0x4fdb077419808080
 
-pub struct TournamentStats {
-    pub let totalParticipants: UInt64
-    pub let currentPrizePool: UFix64
-    pub let averageScore: UFix64
-    pub let activeContests: UInt64
+access(all) struct TournamentStats {
+    access(all) let totalParticipants: UInt64
+    access(all) let currentPrizePool: UFix64
+    access(all) let averageScore: UFix64
+    access(all) let activeContests: UInt64
 
     init(
         totalParticipants: UInt64,
@@ -19,7 +19,7 @@ pub struct TournamentStats {
     }
 }
 
-pub fun main(): TournamentStats {
+access(all) fun main(): TournamentStats {
     return TournamentStats(
         totalParticipants: aiSportsEscrow.getTotalParticipants(),
         currentPrizePool: aiSportsEscrow.getCurrentPrizePool(),

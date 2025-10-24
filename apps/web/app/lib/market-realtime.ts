@@ -104,8 +104,10 @@ const totalListeners = (entry: ListenerEntry): number =>
 
 const getSocket = (): Socket => {
   if (!socket) {
-    socket = io(`${WS_BASE_URL}/markets`, {
-      transports: ["websocket"],
+    const socketUrl = `${WS_BASE_URL}/markets`;
+    socket = io(socketUrl, {
+      path: '/socket.io',
+      transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 500,
