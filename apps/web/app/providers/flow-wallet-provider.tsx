@@ -221,6 +221,15 @@ export const FlowWalletProvider = ({ children }: { children: ReactNode }) => {
 
       const challenge = await requestFlowChallenge(walletUser.addr);
       const signatures = await fcl.currentUser().signUserMessage(challenge.nonce);
+      
+      // Check if user cancelled the signature request
+      if (!signatures || (Array.isArray(signatures) && signatures.length === 0)) {
+        resetSession();
+        setSessionError("Authentication cancelled. Please try connecting your wallet again.");
+        setAuthenticating(false);
+        return;
+      }
+      
       const verified = await verifyFlowSignature({
         address: walletUser.addr,
         nonce: challenge.nonce,
@@ -237,8 +246,31 @@ export const FlowWalletProvider = ({ children }: { children: ReactNode }) => {
       );
     } catch (error) {
       resetSession();
-      const message =
-        error instanceof Error ? error.message : "Failed to verify Flow session";
+      
+      // User-friendly error messages
+      let message = "Failed to verify Flow session";
+      
+      if (error instanceof Error) {
+        const errorMsg = error.message.toLowerCase();
+        
+        // User cancelled wallet action
+        if (errorMsg.includes("declined") || errorMsg.includes("rejected") || errorMsg.includes("cancelled")) {
+          message = "Authentication cancelled. Please try connecting your wallet again.";
+        }
+        // Signature validation failed
+        else if (errorMsg.includes("signatures are required") || errorMsg.includes("signature")) {
+          message = "Authentication cancelled. Please approve the signature request in your wallet.";
+        }
+        // Generic API errors
+        else if (errorMsg.includes("api 400") || errorMsg.includes("bad request")) {
+          message = "Authentication failed. Please try again.";
+        }
+        // Keep original message for other errors
+        else {
+          message = error.message;
+        }
+      }
+      
       setSessionError(message);
     } finally {
       setAuthenticating(false);
