@@ -19,6 +19,7 @@ export const initFlowConfig = (): void => {
 
   fcl.config({
     "app.detail.title": appTitle,
+    "app.detail.description": "Prediction markets on Flow blockchain where your forecast becomes an on-chain asset",
     "app.detail.icon": appIcon || "https://werpool.mixas.pro/favicon/apple-touch-icon.png",
     "accessNode.api": accessNode,
     "discovery.wallet": discoveryWallet,
