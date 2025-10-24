@@ -2,6 +2,7 @@ export type CadenceValue =
   | CadenceOptional
   | CadenceDictionary
   | CadenceArray
+  | CadenceStruct
   | CadenceNumber
   | CadenceString
   | CadenceAddress;
@@ -19,6 +20,14 @@ export interface CadenceDictionary {
 export interface CadenceArray {
   type: "Array";
   value: CadenceValue[];
+}
+
+export interface CadenceStruct {
+  type: "Struct";
+  value: {
+    id: string;
+    fields: Array<{ name: string; value: CadenceValue }>;
+  };
 }
 
 export interface CadenceNumber {

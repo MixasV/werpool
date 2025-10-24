@@ -137,6 +137,17 @@ export class FlowMarketService {
         }, {});
       case "Array":
         return value.value.map((item) => this.toJs(item));
+      case "Struct": {
+        // Cadence 1.0 Struct type - convert fields to object
+        const structValue = value as any;
+        if (structValue.value && Array.isArray(structValue.value.fields)) {
+          return structValue.value.fields.reduce((acc: Record<string, unknown>, field: any) => {
+            acc[field.name] = this.toJs(field.value);
+            return acc;
+          }, {});
+        }
+        return {};
+      }
       case "String":
         return value.value;
       case "UInt":

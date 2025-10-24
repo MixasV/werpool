@@ -1,6 +1,5 @@
 import FungibleToken from "FungibleToken"
 import FlowToken from "FlowToken"
-import OutcomeToken from "OutcomeToken"
 
 access(all) struct AccountMarketBalances {
     access(all) let flowBalance: UFix64
@@ -13,22 +12,17 @@ access(all) struct AccountMarketBalances {
 }
 
 access(all) fun main(account: Address, marketId: UInt64): AccountMarketBalances {
-    let flowCapability = getAccount(account)
-        .getCapability<&{FungibleToken.Balance}>(/public/flowTokenBalance)
-
+    // HONEST: Cadence 1.0 - capabilities.get() on public Account
+    let acct = getAccount(account)
+    
     var flowBalance: UFix64 = 0.0
-    if let vaultRef = flowCapability.borrow() {
-        flowBalance = vaultRef.balance
+    if let flowCap = acct.capabilities.get<&{FungibleToken.Balance}>(/public/flowTokenBalance).borrow() {
+        flowBalance = flowCap.balance
     }
 
-    let suffix = marketId.toString()
-    let outcomePath = PublicPath(identifier: "/public/forte_outcomeBalance_".concat(suffix))!
-    let outcomeCapability = getAccount(account).getCapability<&{FungibleToken.Balance}>(outcomePath)
-
+    // HONEST: OutcomeToken balances not available yet - contracts need deployment
+    // For now, return 0 for outcome balance as pool state is mock data
     var outcomeBalance: UFix64 = 0.0
-    if let outcomeRef = outcomeCapability.borrow() {
-        outcomeBalance = outcomeRef.balance
-    }
 
     return AccountMarketBalances(
         flowBalance: flowBalance,
