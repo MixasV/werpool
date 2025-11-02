@@ -1,11 +1,9 @@
-import { Global, Module } from "@nestjs/common";
+import { Module } from '@nestjs/common';
+import { FlowSchedulerService } from './flow-scheduler.service';
+import { FlowTransactionService } from '../markets/flow/flow-transaction.service';
 
-import { FlowCliService } from "./flow-cli.service";
-import { AiSportsFlowService } from "./aisports-flow.service";
-
-@Global()
 @Module({
-  providers: [FlowCliService, AiSportsFlowService],
-  exports: [FlowCliService, AiSportsFlowService],
+  providers: [FlowSchedulerService, FlowTransactionService],
+  exports: [FlowSchedulerService, FlowTransactionService],
 })
 export class FlowModule {}

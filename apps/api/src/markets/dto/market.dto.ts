@@ -70,6 +70,8 @@ export interface MarketSummaryDto {
   closeAt?: string;
   primaryOutcomeId: string;
   totalLiquidity: number;
+  contractVersion?: 'V1_LEGACY' | 'V2_LEGACY' | 'V3_LMSR' | 'V4_POLYMARKET';
+  blockchainMarketId?: number;
 }
 
 export interface MarketDto extends MarketSummaryDto {

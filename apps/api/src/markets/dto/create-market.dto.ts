@@ -59,6 +59,8 @@ export interface CreateMarketDto {
   oracleId?: string;
   patrolThreshold?: number;
   closeAt?: string;
+  contractVersion?: 'V1_LEGACY' | 'V2_LEGACY' | 'V3_LMSR' | 'V4_POLYMARKET';
+  blockchainMarketId?: number;
   schedule?: CreateScheduleDto;
   liquidityPool: CreateLiquidityPoolDto;
   outcomes: CreateOutcomeDto[];

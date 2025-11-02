@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from 'react';
 import { MarketTradePanel } from './market-trade-panel';
+import { SimpleTradePanelV4 } from './simple-trade-panel-v4';
+import { OrderBookV4 } from './order-book-v4';
 import { TransactionConfirmationModal } from './transaction-confirmation-modal';
 import { useFlowWallet } from '../providers/flow-wallet-provider';
 import { useUserSignedTrade } from '../hooks/useUserSignedTrade';

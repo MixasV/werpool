@@ -70,4 +70,35 @@ export class FlowTransactionService {
     const match = output.match(/Transaction ID:\s*([0-9a-fA-F]+)/);
     return match ? match[1] : null;
   }
+
+  async executeTransaction(options: FlowTransactionOptions): Promise<FlowTransactionResult> {
+    return this.send(options);
+  }
+
+  async executeScript(options: { scriptPath: string; arguments: Array<{ type: string; value: unknown }>; network?: string }): Promise<any> {
+    const cliArgs = [
+      "scripts",
+      "execute",
+      options.scriptPath,
+      "--args-json",
+      JSON.stringify(options.arguments),
+    ];
+
+    if (options.network) {
+      cliArgs.push("--network", options.network);
+    }
+
+    const { stdout, stderr, exitCode } = await this.flowCli.execute(cliArgs);
+
+    if (exitCode !== 0) {
+      this.logger.error(`flow ${cliArgs.join(" ")} failed: ${stderr.trim()}`);
+      throw new Error(stderr.trim() || "flow script failed");
+    }
+
+    return {
+      result: stdout,
+      rawStdout: stdout,
+      rawStderr: stderr,
+    };
+  }
 }
