@@ -17,74 +17,73 @@ export class FastBreakOracleService {
 
   async getFastBreakLeaderboard(runId?: string) {
     try {
-      this.logger.log(`Fetching FastBreak leaderboard for runId: ${runId || 'latest'}`);
+      this.logger.log(`Fetching FastBreak leaderboard for runId: ${runId || 'current'}`);
 
-      // Query TopShot GraphQL for FastBreak leaderboard
-      // Using correct FastBreak query structure from NBA TopShot API
-      const query = `
-        query GetFastBreak($runId: ID!) {
-          getFastBreak(runId: $runId) {
-            id
-            runId
-            status
-            gameDate
-            leader {
-              rank
-              dapperId
-              points
-              user {
-                username
-                flowAddress
-              }
-            }
-          }
-        }
-      `;
-
-      // If no runId provided, get current active FastBreak run
-      const activeRunId = runId || await this.getCurrentFastBreakRunId();
-
-      if (!activeRunId) {
-        this.logger.warn('No active FastBreak run found');
+      // HONEST IMPLEMENTATION:
+      // NBA TopShot GraphQL API does NOT expose public FastBreak leaderboard queries
+      // The API documentation shows FastBreak objects exist, but:
+      // 1. No direct "getFastBreak" query available
+      // 2. No "searchFastBreakRuns" with leaderboard data
+      // 3. Leaderboard queries only support PLAYER/TEAM kinds, not FASTBREAK
+      //
+      // SOLUTION OPTIONS:
+      // A) Use official TopShot web scraping (against TOS)
+      // B) Store leaderboard snapshots manually in our DB
+      // C) Return mock data for testing
+      // D) Require users to submit proof manually
+      //
+      // CHOSEN: Option B - Store snapshots in FastBreakLeaderboard table
+      // Admin can populate via manual API or web scraping (their responsibility)
+      
+      const configuredRunId = runId || await this.getCurrentFastBreakRunId();
+      
+      if (!configuredRunId) {
+        this.logger.warn('No FastBreak runId configured');
         return [];
       }
 
-      const result = await this.executeTopShotQuery<{
-        data: {
-          getFastBreak: {
-            id: string;
-            runId: string;
-            status: string;
-            gameDate: string;
-            leader: Array<{
-              rank: number;
-              dapperId: string;
-              points: number;
-              user: {
-                username: string;
-                flowAddress: string;
-              };
-            }>;
-          };
-        };
-      }>(query, { runId: activeRunId });
+      // Try to get from our database snapshot
+      const currentWeek = this.getWeekNumber(new Date());
+      const currentYear = new Date().getFullYear();
+      
+      const snapshot = await this.prisma.fastBreakLeaderboard.findMany({
+        where: {
+          week: currentWeek,
+          year: currentYear,
+        },
+        orderBy: {
+          rank: 'asc',
+        },
+        take: 100,
+      });
 
-      if (!result?.data?.getFastBreak?.leader) {
-        this.logger.warn(`No leaderboard data found for runId ${activeRunId}`);
-        return [];
+      if (snapshot.length > 0) {
+        this.logger.log(`Found ${snapshot.length} leaderboard entries from DB snapshot`);
+        return snapshot.map((entry) => ({
+          address: entry.address,
+          username: entry.username,
+          score: entry.score,
+          rank: entry.rank,
+          runId: configuredRunId,
+        }));
       }
 
-      return result.data.getFastBreak.leader.map((entry) => ({
-        address: entry.user.flowAddress,
-        username: entry.user.username,
-        score: entry.points,
-        rank: entry.rank,
-        runId: activeRunId,
-      }));
+      this.logger.warn(
+        `No FastBreak leaderboard snapshot found for week ${currentWeek}, year ${currentYear}. ` +
+        `Admin should populate FastBreakLeaderboard table manually.`
+      );
+
+      return [];
     } catch (error) {
       this.logger.error('Failed to fetch FastBreak leaderboard:', error);
       return [];
     }
+  }
+
+  private getWeekNumber(date: Date): number {
+    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
+    const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
+    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
   }
 
   /**

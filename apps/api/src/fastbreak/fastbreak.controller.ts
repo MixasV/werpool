@@ -63,4 +63,50 @@ export class FastBreakController {
       cancelled: result.cancelled 
     };
   }
+
+  @Post('leaderboard/snapshot')
+  async saveLeaderboardSnapshot(@Body() body: { entries: any[]; week?: number; year?: number }) {
+    // Admin endpoint to manually populate FastBreak leaderboard
+    const week = body.week || this.getCurrentWeekNumber();
+    const year = body.year || new Date().getFullYear();
+
+    for (const entry of body.entries) {
+      await this.prisma.fastBreakLeaderboard.upsert({
+        where: {
+          week_year_address: {
+            week,
+            year,
+            address: entry.address,
+          },
+        },
+        create: {
+          week,
+          year,
+          address: entry.address,
+          username: entry.username,
+          rank: entry.rank,
+          score: entry.score,
+        },
+        update: {
+          username: entry.username,
+          rank: entry.rank,
+          score: entry.score,
+        },
+      });
+    }
+
+    return {
+      message: 'Leaderboard snapshot saved',
+      week,
+      year,
+      entries: body.entries.length,
+    };
+  }
+
+  private getCurrentWeekNumber(): number {
+    const now = new Date();
+    const firstDayOfYear = new Date(now.getFullYear(), 0, 1);
+    const pastDaysOfYear = (now.getTime() - firstDayOfYear.getTime()) / 86400000;
+    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+  }
 }
