@@ -85,6 +85,9 @@ export const AppHeader = () => {
             <Link href="/markets" className="app-header__link">
               Markets
             </Link>
+            <Link href="/fastbreak/challenges" className="app-header__link">
+              FastBreak
+            </Link>
             <Link href="/leaderboard" className="app-header__link">
               Leaderboard
             </Link>

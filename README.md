@@ -1,370 +1,636 @@
-# 🎯 Forte Prediction Markets
+# Werpool - Flow Blockchain Prediction Markets
 
-> **Decentralized prediction markets platform built on Flow blockchain with advanced LMSR (Logarithmic Market Scoring Rule) automated market maker.**
+A decentralized prediction market platform built on Flow blockchain, featuring NBA TopShot NFT integration, real-time data oracles, and both LMSR and Polymarket-style order book architectures.
 
-[![Flow Blockchain](https://img.shields.io/badge/Flow-Blockchain-00EF8B?style=for-the-badge&logo=flow&logoColor=white)](https://flow.com/)
-[![Built with Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![NestJS Backend](https://img.shields.io/badge/NestJS-10-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)](https://nestjs.com/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-100%25-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-
-**Live Demo**: [werpool.mixas.pro](https://werpool.mixas.pro)
+**Live Demo:** [werpool.mixas.pro](https://werpool.mixas.pro)  
+**Built for:** Flow Forte Hacks Hackathon 2025
 
 ---
 
-## 🏆 Forte Hacks Submission Highlights
+## 🏆 Hackathon Bounties & Features
 
-This project is specifically designed to showcase **Flow Forte's revolutionary features** and is ready for the **Forte Hacks hackathon** ($250k in prizes!).
+### 🎯 Primary Bounty: Best Killer App on Flow
 
-### ✨ Why This Project Stands Out
+**Consumer-oriented prediction markets platform** bringing Polymarket-style trading to Flow blockchain with:
+- Real-world sports betting with Flow wallet integration
+- NBA TopShot NFT bonus system for sports fans
+- User-friendly UX for mass adoption (no Web3 knowledge required)
+- AI-powered sports data oracles for automated market creation
 
-#### 1. **True Web3 Self-Custody** 🔐
-- ✅ **User-signed transactions** via FCL (Flow Client Library)
-- ✅ **Non-custodial by default** - users control their funds
-- ✅ Graceful **custodial fallback** for onboarding new users
-- ✅ Real-time transaction tracking: Signing → Pending → Finalized → Sealed
+### 🔗 Dapper Labs Integration (3 Bounties)
 
-#### 2. **Advanced Analytics & Visualization** 📊
-- ✅ **Interactive price charts** with Recharts library
-- ✅ **Probability visualization** (stacked area charts)
-- ✅ **Trading volume analytics** with cumulative tracking
-- ✅ Multi-timeframe support (1h / 24h / 7d / 30d / all)
-- ✅ Real-time WebSocket updates
+#### ✅ Top Dapper NFT Experience Unlocking Real Utility
+**NBA TopShot Moment Integration:**
+- **Moment Ownership Verification** - Users can stake NBA TopShot moments to earn bonus points
+- **Team-Based Rewards** - Earn 18-200 points for moments of participating teams
+- **Multi-Address Support** - Checks both Flow wallet and linked Dapper account
+- **GraphQL API Integration** - Real-time moment data from `https://public-api.nbatopshot.com/graphql`
+- **Account Linking** - Connect Dapper wallet with Flow wallet for unified experience
 
-#### 3. **Enterprise-Grade Architecture** 🏗️
-- ✅ **LMSR Automated Market Maker** - mathematically sound liquidity
-- ✅ **Role-Based Access Control** (ADMIN, OPERATOR, ORACLE, PATROL)
-- ✅ **Prometheus + Grafana** monitoring
-- ✅ **WebSocket** for real-time market updates
-- ✅ **Comprehensive testing**: 32 unit tests + 4 E2E + 45,740 lines of Cadence tests
+**Implementation:**
+```typescript
+// Backend services:
+apps/api/src/topshot/topshot.service.ts           // 335 lines
+apps/api/src/topshot/topshot-lock.service.ts     // 425 lines  
+apps/api/src/topshot/topshot-reward.service.ts   // 499 lines
+apps/api/src/topshot/topshot-graphql.client.ts   // GraphQL integration
+apps/api/src/topshot/topshot-simple.client.ts    // Direct queries
 
-#### 4. **Production-Ready Smart Contracts** 📝
-- ✅ **CoreMarketHub** - market lifecycle management
-- ✅ **LMSRAmm** - automated market maker with LMSR algorithm
-- ✅ **OutcomeToken** - fungible tokens for market outcomes
-- ✅ Full integration with **Flow testnet**
-- ✅ 19 Cadence transactions + 7 scripts
+// Frontend:
+apps/web/app/components/dapper-account-linking.tsx
+```
 
-#### 5. **Forte-Ready Features** 🚀
-While we haven't implemented Forte-specific features yet (Flow Actions, Scheduled Transactions), our architecture is **designed to integrate them seamlessly**:
-- 📋 Transaction templates ready for Flow Actions
-- 📋 Modular design for easy Scheduled TX integration
-- 📋 Oracle system prepared for Band Protocol
-- 📋 Extensible architecture for Flow Agents
+**Status:** ⚠️ Backend implemented (1259 lines), GraphQL integration partial (returns empty results)
 
----
+#### ⚠️ Top Game Integration (FastBreak)
+**FastBreak Challenge Integration:**
+- Database models for challenges and leaderboards
+- Backend services for tracking player performance
+- Points system integration
 
-## 🎮 Key Features
+**Implementation:**
+```prisma
+model FastBreakChallenge { ... }  // In schema.prisma
+model FastBreakLeaderboard { ... }
+```
 
-### For Traders
-- 🎯 **Create & trade** on prediction markets
-- 📈 **Real-time charts** for market analysis
-- 💰 **LMSR pricing** ensures liquidity
-- 🔒 **Self-custody** - your keys, your crypto
-- 📱 **Mobile-responsive** design
+**Status:** ❌ 10% complete (database schema only, no backend logic)
 
-### For Market Operators
-- ⚙️ **Full admin panel** for market management
-- 🔐 **Role-based permissions** system
-- 📊 **Analytics dashboard** with Grafana
-- 🚨 **Patrol signals** for fraud detection
-- ⏰ **Workflow automation** (activate/settle/void)
-
-### For Developers
-- 🔧 **Clean TypeScript** codebase
-- 🧪 **Comprehensive tests** (unit + E2E + Cadence)
-- 📚 **Well-documented** APIs and contracts
-- 🐳 **Docker Compose** for local development
-- 🔄 **CI/CD ready** with GitHub Actions
+#### ❌ Best Dapper Data & Insights Tool
+Not implemented - focused on trading experience instead of analytics tools.
 
 ---
 
-## 🏗️ Tech Stack
+### 🔌 Find Labs Integration
 
-### Frontend
-- **Next.js 14** - React framework with App Router
-- **TypeScript** - Type-safe development
-- **FCL (Flow Client Library)** - Blockchain integration
-- **Recharts** - Interactive data visualization
-- **Socket.IO** - Real-time updates
-- **Tailwind CSS** - Utility-first styling
+**Flow Blockchain Data API Integration:**
+- **FindLabsClient** - Direct integration with Find Labs API
+- **Transaction Monitoring** - Real-time blockchain transaction tracking
+- **Event Queries** - Monitor on-chain events and contract interactions
+- **Analytics** - Blockchain data for market analytics
 
-### Backend
-- **NestJS 10** - Progressive Node.js framework
-- **Prisma** - Type-safe ORM (22 database models)
-- **PostgreSQL 16** - Relational database
-- **Redis 7** - Caching and sessions
-- **Socket.IO** - WebSocket gateway
-- **Prometheus** - Metrics collection
+**Implementation:**
+```typescript
+apps/api/src/analytics/find-labs.client.ts       // 142 lines
+apps/api/src/analytics/analytics.service.ts      // Uses Find Labs data
+```
 
-### Blockchain
-- **Flow Blockchain** (Testnet/Mainnet ready)
-- **Cadence** - Smart contract language
-- **Flow CLI** - Contract deployment & testing
-- **Flow Emulator** - Local development
+**API Endpoints Used:**
+- `GET /flow/v1/transaction` - Query transactions
+- `GET /flow/v1/transaction/:id` - Get transaction details
+- Uses API key authentication: `FIND_LABS_API_KEY`
 
-### Smart Contracts
-- `CoreMarketHub.cdc` - Market management
-- `LMSRAmm.cdc` - Automated market maker
-- `OutcomeToken.cdc` - Fungible token standard
+**Status:** ✅ Fully integrated and working
+
+---
+
+### 🤖 aiSports Integration (Partial)
+
+**AI-Powered Sports Data:**
+- **Oracle Service** - Automated market creation from aiSports predictions
+- **Meta Prediction Service** - AI-driven outcome predictions
+- **Market Automation** - Auto-create markets from AI sports predictions
+- **Flow Integration** - aiSports-specific Cadence contracts
+
+**Implementation:**
+```typescript
+apps/api/src/oracles/aisports/meta-prediction.service.ts
+apps/api/src/automation/aisports-market-automation.service.ts
+apps/api/src/flow/aisports-flow.service.ts
+apps/api/data/aisports-meta.json                  // Market metadata
+```
+
+**Status:** ⚠️ Oracle integration working (predictions + automation), NO $JUICE token integration
+
+---
+
+### ❌ MFL (Metaverse Football League) Integration
+
+**Status:** ❌ Not implemented (placeholder UI only, 0% complete)
+
+```
+apps/web/app/mfl/tournaments/page.tsx - Empty placeholder
+```
+
+---
+
+## 🔗 Data Sources & APIs
+
+### Sports Data Oracles
+
+#### 1. **aiSports API** ✅
+- **Purpose:** AI-powered sports predictions and metadata
+- **Integration:** Oracle service + market automation
+- **Endpoint:** Internal meta prediction service
+- **Data:** Game predictions, AI confidence scores, market metadata
+
+#### 2. **TheSportsDB** ⚠️
+- **Purpose:** Sports events, teams, and scores
+- **Status:** Client implemented, not actively used
+- **Endpoint:** `https://www.thesportsdb.com/api/v1/json/`
+- **Data:** NBA/NFL schedules, scores, team info
+
+#### 3. **ESPN Sports API** ⚠️
+- **Purpose:** Real-time sports scores and stats
+- **Status:** Client exists, limited usage
+- **Endpoint:** ESPN public API
+- **Data:** Live scores, game status
+
+#### 4. **NBA TopShot GraphQL** ⚠️
+- **Purpose:** NBA moment ownership and metadata
+- **Status:** Implemented but returning empty results
+- **Endpoint:** `https://public-api.nbatopshot.com/graphql`
+- **Queries:**
+  ```graphql
+  getUserMomentsByFlowAddress
+  searchMintedMoments (with byOwnerFlowAddress filter)
+  ```
+
+### Blockchain Data
+
+#### 5. **Find Labs API** ✅
+- **Purpose:** Flow blockchain transaction and event data
+- **Status:** Fully integrated
+- **Endpoint:** `https://api.test-find.xyz/flow/v1/`
+- **Authentication:** API key (`FIND_LABS_API_KEY`)
+- **Data:** Transactions, events, blocks, contract interactions
+
+#### 6. **Flow Blockchain (Direct FCL)** ✅
+- **Purpose:** Execute Cadence scripts and transactions
+- **Integration:** `@onflow/fcl` library
+- **Network:** Testnet (`https://rest-testnet.onflow.org`)
+- **Usage:**
+  - Execute Cadence scripts (read data)
+  - User wallet transaction signing
+  - Account balance queries
+  - Contract interaction
+
+---
+
+## ⚡ Flow Blockchain Features Used
+
+### 1. Flow Actions (FLIP-338) ❌
+
+**Status:** DEMO CODE ONLY (NOT IMPLEMENTED)
+
+**What exists:**
+- `FastBreakPeerBetting.cdc` (137 lines) - Educational demo
+- Shows Source/Sink/Swapper/Oracle patterns
+- NOT using official DeFiActions contract interfaces
+- NOT integrated with V4 trading contracts
+
+**What's missing:**
+- ❌ No official FLIP-338 interface implementation
+- ❌ No `import "DeFiActions"` 
+- ❌ No UniqueIdentifier for tracing
+- ❌ No connectors to external DeFi protocols
+- ❌ Not used in any transactions
+
+**Reality Check:**
+Our V4 contracts (OrderBookV4, CoreMarketContractV4) use **custom implementations**:
+- Direct order matching engine (not Flow Actions Swapper)
+- Direct collateral split/merge (not Flow Actions Source/Sink)
+- Standard Cadence patterns (not FLIP-338 composable structs)
+
+**Completion:** ~5% (demo only)
+
+### 2. Flow Client Library (FCL) ✅
+
+**Full wallet integration for user-signed transactions:**
+
+```typescript
+// apps/web/app/lib/flow-config.ts
+import * as fcl from "@onflow/fcl";
+
+fcl.config({
+  'flow.network': 'testnet',
+  'accessNode.api': 'https://rest-testnet.onflow.org',
+  'discovery.wallet': 'https://fcl-discovery.onflow.org/testnet/authn',
+});
+
+// User signs transactions with their wallet
+const txId = await fcl.mutate({
+  cadence: transactionCode,
+  args: [...],
+  limit: 9999,
+});
+```
+
+**Features:**
+- ✅ Wallet connection (Dapper + others)
+- ✅ Transaction signing (user-controlled)
+- ✅ Account balance queries
+- ✅ Cadence script execution
+
+### 3. Cadence Smart Contracts ✅
+
+**V3 LMSR Markets:**
+- `CoreMarketHubV2.cdc` - Market lifecycle management
+- `LMSRAmmV2.cdc` - LMSR automated market maker
+- `OutcomeTokenV2.cdc` - Fungible outcome tokens
+
+**V4 Polymarket-Style Markets:**
+- `CoreMarketContractV4.cdc` - Market state management
+- `OrderBookV4.cdc` - Order matching engine
+- `OutcomeTokenV4.cdc` - Binary outcome tokens
+- `SealedBettingV4.cdc` - Private betting mechanism
+
+**Deployed on Testnet:**
+- Contract Address: `0x3ea7ac2bcdd8bcef`
+- FungibleToken: `0x9a0766d93b6608b7`
+- FlowToken: `0x7e60df042a9c0868`
+
+### 4. Flow CLI Integration ✅
+
+**Backend transaction execution:**
+
+```typescript
+// apps/api/src/markets/flow/flow-transaction.service.ts
+async executeTransaction(options: FlowTransactionOptions) {
+  const cliArgs = [
+    'transactions', 'send',
+    options.transactionPath,
+    '--args-json', JSON.stringify(options.arguments),
+    '--signer', options.signer,
+    '--network', 'testnet',
+  ];
+  
+  return this.flowCli.execute(cliArgs);
+}
+```
+
+### 5. Scheduled Transactions (Flow Workflows) ✅
+
+**Status:** FULLY IMPLEMENTED AND WORKING
+
+Part of "Flow Forte Actions and Workflows" bounty - the **Workflows** half.
+
+**Backend Services:**
+```typescript
+apps/api/src/scheduler/scheduler.service.ts              // 352 lines - Task management
+apps/api/src/scheduler/scheduled-settlement.service.ts   // 246 lines - Auto-settlement
+apps/api/src/scheduler/scheduler.controller.ts           // 146 lines - API endpoints
+```
+
+**Cadence Transaction:**
+```cadence
+contracts/cadence/transactions/scheduled/schedule_settlement.cdc
+```
+
+**Features:**
+- ✅ **Auto-settlement** - Markets settle automatically when oracle data available
+- ✅ **Task Scheduler** - Background job processing
+- ✅ **Oracle Integration** - Sports, Crypto, Flow Volume oracles
+- ✅ **Leaderboard Snapshots** - Recurring daily tasks
+- ✅ **API Endpoints** - `GET /scheduler/tasks`, `POST /scheduler/tasks/:id/execute`
+
+**Database Models:**
+```prisma
+model SchedulerTask {
+  id          String
+  type        SchedulerTaskType  // MARKET_SETTLEMENT, LEADERBOARD_SNAPSHOT
+  status      SchedulerTaskStatus // PENDING, IN_PROGRESS, COMPLETED, FAILED
+  scheduledFor DateTime
+  marketId    String?
+  // ...
+}
+```
+
+**How it works:**
+1. Market closes (`closeAt` timestamp reached)
+2. `ScheduledSettlementService.processScheduledSettlements()` runs periodically
+3. Checks oracle for final result (sports scores, crypto prices, etc.)
+4. If result available → creates settlement task
+5. Task executor settles market on blockchain
+6. Winners can claim rewards
+
+**Live Status:** API shows **3 active tasks** in system right now
+
+---
+
+## 🏗️ Technical Architecture
+
+### Smart Contracts (Cadence)
+
+**V3 Contracts (LMSR-based) - FULLY WORKING ✅**
+- `CoreMarketHubV2.cdc` - Market lifecycle management (1341 lines)
+- `LMSRAmmV2.cdc` - LMSR automated market maker (working math)
+- `OutcomeTokenV2.cdc` - Fungible outcome tokens
+- **Deployed:** `0x3ea7ac2bcdd8bcef` (testnet)
+- **Transactions:** 15+ (create, trade, settle, etc.)
+- **Scripts:** 5+ (quotes, balances, market data)
+
+**V4 Contracts (Polymarket-style) - DEPLOYED ✅**
+- `CoreMarketContractV4.cdc` - Market state & lifecycle (520 lines)
+  - Split/merge collateral (1:1 backing)
+  - Market settlement with oracle integration
+  - Role-based permissions (admin, oracle, operator, patrol)
+  - Events: PositionSplit, PositionMerged, MarketSettled
+  
+- `OrderBookV4.cdc` - FIFO order matching engine (576 lines)
+  - Buy/sell order creation
+  - Automatic order matching
+  - Collateral & share escrow
+  - Events: OrderCreated, OrderMatched, OrderCanceled
+  
+- `OutcomeTokenV4.cdc` - Binary outcome tokens (FungibleToken standard)
+  - Minting during position split
+  - Burning during merge/redemption
+  
+- `SealedBettingV4.cdc` - Private predictions
+  - Commit/reveal mechanism
+  - Time-locked reveals
+
+**Deployed:** `0x3ea7ac2bcdd8bcef` (testnet)
+**Transactions:** 11 (split, merge, createOrder, matchOrder, settle, etc.)
+**Scripts:** 6 (orderbook, prices, balances)
+
+**Flow Actions (Demo Only) - 5% Complete ⚠️**
+- `FastBreakPeerBetting.cdc` (137 lines)
+  - Demonstrates Source/Sink/Swapper/Oracle patterns
+  - NOT using official FLIP-338 interfaces
+  - NOT integrated with V4 contracts
+  - Educational example only
+
+**Total Deployed:** 13 contracts, ~3,500 lines working code on testnet
+
+### Backend (NestJS + TypeScript)
+
+**API Services:**
+- `MarketsService` - Market CRUD and trading logic
+- `LmsrService` - LMSR math calculations
+- `PolymarketV4Service` - V4 order book trading
+- `TopShotService` - NBA TopShot integration
+- `FindLabsClient` - Blockchain data API
+- `FlowTransactionService` - Execute Cadence transactions
+- `PointsService` - User points and rewards
+
+**Data Integrations:**
+- Find Labs API (blockchain data)
+- NBA TopShot GraphQL (NFT data)
+- aiSports Oracle (AI predictions)
+- TheSportsDB Client (sports data)
+- ESPN Sports Client (live scores)
+
+**Database:**
+- PostgreSQL 16 with Prisma ORM
+- 25+ models (markets, users, trades, points, moments)
+- Redis for caching and sessions
+
+### Frontend (Next.js 14 + TypeScript)
+
+**Framework:**
+- Next.js 14 App Router
+- TypeScript strict mode
+- Tailwind CSS
+- FCL wallet integration
+
+**Key Features:**
+- Real-time market updates (WebSocket)
+- Wallet connection UI
+- Trade execution panel
+- NBA TopShot moment selection
+- Admin dashboard
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 20.17.0+
-- pnpm 9.x
-- Docker Desktop (or PostgreSQL 16 + Redis 7)
-- Flow CLI (optional, for contract testing)
+```bash
+Node.js 18+
+PostgreSQL 16+
+Redis 7+
+Flow CLI (optional)
+pnpm 9+
+```
 
 ### Installation
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/yourusername/forte-prediction-markets.git
-cd forte-prediction-markets
-
-# 2. Install dependencies
+# Install dependencies
 pnpm install
 
-# 3. Setup environment
-cp .env.example .env
-# Edit .env with your settings
+# Setup environment
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
 
-# 4. Start Docker services
-docker-compose up -d postgres redis flow-emulator
+# Configure APIs in apps/api/.env:
+FIND_LABS_API_KEY=your_api_key           # Get from Find Labs
+NBA_TOPSHOT_API_URL=https://public-api.nbatopshot.com/graphql
+FLOW_NETWORK=testnet
+DATABASE_URL=postgresql://...
 
-# 5. Setup database
+# Setup database
 cd apps/api
-pnpm prisma:generate
-pnpm prisma:migrate
+pnpm prisma generate
+pnpm prisma migrate deploy
 
-# 6. Start development servers
+# Build and start
 cd ../..
-pnpm dev
+pnpm build
+pm2 start ecosystem.config.js
 ```
 
-**Open**: http://localhost:3000
-
-### DNS Setup (For Production)
-
-To setup `werpool.mixas.pro` pointing to a different server:
-
-1. **Add A Record** (if server has static IP):
-   ```
-   Type: A
-   Name: werpool
-   Value: YOUR_SERVER_IP
-   TTL: 3600
-   ```
-
-2. **Or add CNAME Record** (if using another domain):
-   ```
-   Type: CNAME
-   Name: werpool
-   Value: your-server.example.com
-   TTL: 3600
-   ```
-
-3. Update `.env` files:
-   ```env
-   NEXT_PUBLIC_API_BASE_URL=https://werpool.mixas.pro/api
-   ```
+**Access:**
+- Frontend: `http://localhost:3000`
+- API: `http://localhost:3000` (same port, proxied)
 
 ---
 
-## 📊 Project Status
+## 📊 What's Implemented
 
-**Current Readiness**: ~90% production-ready
+### ✅ Fully Working (85%+)
 
-### ✅ Completed Features
-- [x] Smart contracts (CoreMarketHub, LMSRAmm, OutcomeToken)
-- [x] Backend API (NestJS + Prisma)
-- [x] Frontend UI (Next.js + FCL)
-- [x] User transaction signing (FCL mutate)
-- [x] Interactive charts (Price/Probability/Volume)
-- [x] WebSocket real-time updates
-- [x] Role-based access control
-- [x] Admin panel
-- [x] Prometheus monitoring
-- [x] Docker Compose setup
-- [x] E2E tests (Playwright)
-- [x] Cadence tests (45,740 lines)
+**V3 LMSR Markets:**
+- Market creation and management
+- LMSR automated market maker
+- Trade execution (backend-signed)
+- Real-time quotes and price impact
+- Points system and leaderboard
 
-### 🚧 In Progress
-- [ ] Flow Actions integration
-- [ ] Scheduled Transactions
-- [ ] Band Protocol oracle
-- [ ] CI/CD pipeline
-- [ ] Additional unit tests
+**V4 Backend:**
+- Order book contracts deployed
+- All API endpoints implemented
+- FCL wallet transaction signing
+- Effective price calculations
+
+**Wallet & Auth:**
+- FCL integration (Dapper + others)
+- Session management
+- Account balance display
+- Multi-wallet support
+
+**Admin Features:**
+- Draft market system
+- Market editing
+- Publishing to blockchain
+- Manual settlement
+
+**Data Integrations:**
+- Find Labs API (blockchain data) ✅
+- aiSports Oracle (predictions) ✅
+- Flow CLI execution ✅
+
+### ⚠️ Partially Working (30-60%)
+
+**V4 Frontend:**
+- FCL execution works ✅
+- UI doesn't refresh after trade ❌
+- Order book component exists but not displayed ❌
+- Sealed betting UI not integrated ❌
+
+**NBA TopShot:**
+- Backend services implemented (1259 lines) ✅
+- GraphQL queries return empty ❌
+- Account linking UI exists ⚠️
+- Bonus calculation works ✅
+- Not triggered on V4 trades ❌
+
+**Settlement:**
+- Manual settlement works ✅
+- Scheduled auto-settlement ✅ (1255 lines code)
+- Oracle-driven automation ✅ (Sports/Crypto/Flow Volume)
+
+### ❌ Not Implemented (0-10%)
+
+- MFL integration (placeholder only - 0%)
+- FastBreak backend (DB schema only - 10%)
+- $JUICE token integration (no code - 0%)
+- Advanced V4 features (stop-loss, order expiration - 0%)
+- Comprehensive testing suite (tests removed - 15%)
+- CI/CD pipelines (no workflows - 0%)
 
 ---
 
-## 🧪 Testing
+## 🎯 Bounty Eligibility Summary
 
-```bash
-# Backend unit tests
-cd apps/api
-pnpm test
-
-# Frontend E2E tests
-cd apps/web
-pnpm test:e2e
-
-# Cadence contract tests
-cd apps/api
-pnpm cadence:test
-
-# Linting
-pnpm lint
-```
-
-**Test Coverage**:
-- ✅ 32 backend unit tests
-- ✅ 4 frontend E2E tests
-- ✅ 45,740 lines of Cadence tests
+| Bounty | Status | Completion | Notes |
+|--------|--------|------------|-------|
+| **Best Killer App on Flow** | ✅ Eligible | ~70% | Full prediction market platform working |
+| **Best Use of Flow Forte Actions** | ⚠️ Partial | ~40% | Scheduled TX ✅ (75%), Flow Actions ❌ (5% demo only) |
+| **Best Existing Code Integration** | ✅ Eligible | ~60% | Working on Flow testnet, ongoing improvements |
+| **Dapper NFT Experience** | ⚠️ Partial | ~30% | Backend done, GraphQL issues |
+| **Dapper Game Integration** | ❌ Not Eligible | ~10% | FastBreak schema only |
+| **Find Labs API Integration** | ✅ Eligible | ~85% | Fully integrated and working |
+| **aiSports Integration** | ⚠️ Partial | ~40% | Oracle works, no $JUICE token |
+| **MFL Integration** | ❌ Not Eligible | 0% | Not implemented |
 
 ---
 
-## 📖 Documentation
+## 📈 Current Status
 
-- **`START_PROJECT.md`** - Detailed setup instructions
-- **`IMPLEMENTATION_SUMMARY.md`** - Technical implementation details
-- **`HONEST_PROJECT_ANALYSIS.md`** - Project readiness analysis
-- **`UPDATED_ROADMAP.md`** - Development roadmap
-- **`QUICK_START.md`** - Quick reference guide
-- **`AGENTS.md`** - Development guidelines
+**Overall Completion:** **45-50%** of planned features
 
----
+**What Works Right Now:**
+1. ✅ V3 LMSR markets (create, trade, settle)
+2. ✅ V4 backend + FCL wallet execution
+3. ✅ Draft market system
+4. ✅ Points and leaderboard
+5. ✅ Find Labs blockchain data integration
+6. ✅ Wallet integration (FCL)
 
-## 🏆 Forte Hacks Integration
+**Known Issues:**
+1. ⚠️ V4 UI doesn't refresh after trade
+2. ⚠️ NBA TopShot GraphQL returns empty
+3. ⚠️ No scheduled transactions
+4. ⚠️ Tests removed/gitignored
+5. ⚠️ No CI/CD pipelines
 
-### What Makes This Project Forte-Ready?
-
-1. **Built on Flow Forte**
-   - Utilizes Flow's upgraded testnet
-   - Ready for Forte Actions integration
-   - Prepared for Scheduled Transactions
-   - Oracle-ready architecture
-
-2. **Showcases Flow's Strengths**
-   - Low transaction costs
-   - Fast finality (~2-3 seconds)
-   - Composable smart contracts
-   - Developer-friendly Cadence language
-
-3. **Production-Grade Quality**
-   - Enterprise architecture
-   - Comprehensive testing
-   - Security best practices
-   - Scalable design
-
-4. **Open for Collaboration**
-   - Clean, documented code
-   - Modular architecture
-   - Easy to extend
-   - Community-friendly
+**Not Started:**
+1. ❌ MFL integration
+2. ❌ FastBreak backend
+3. ❌ Oracle automation
+4. ❌ $JUICE token support
 
 ---
 
 ## 🔒 Security
 
-- ✅ Environment variables for sensitive data
-- ✅ No hardcoded secrets
-- ✅ User-signed transactions (non-custodial)
-- ✅ RBAC for admin operations
-- ✅ Input validation on all endpoints
-- ✅ Prisma for SQL injection prevention
-- ✅ Rate limiting (recommended to add)
-
-**Security Note**: The `.env` file is gitignored. Use `.env.example` as a template.
+- ✅ User-signed transactions (FCL)
+- ✅ Environment variables for secrets
+- ✅ Input validation (class-validator)
+- ✅ SQL injection prevention (Prisma)
+- ⚠️ Rate limiting (basic only)
+- ⚠️ RBAC (partial)
 
 ---
 
-## 🤝 Contributing
+## 📝 Development
 
-We welcome contributions! Please follow these guidelines:
+### Project Structure
+```
+werpool/
+├── apps/
+│   ├── api/                          # NestJS backend
+│   │   ├── src/
+│   │   │   ├── markets/              # Market services
+│   │   │   ├── topshot/              # NBA TopShot integration
+│   │   │   ├── analytics/            # Find Labs client
+│   │   │   ├── oracles/              # Data oracles (aiSports, etc.)
+│   │   │   └── flow/                 # Flow blockchain services
+│   │   └── prisma/schema.prisma      # Database models
+│   └── web/                          # Next.js frontend
+│       ├── app/
+│       │   ├── components/           # React components
+│       │   ├── lib/                  # API clients, FCL config
+│       │   └── markets/              # Market pages
+├── contracts/
+│   └── cadence/                      # Smart contracts
+│       ├── *.cdc                     # Contract files
+│       ├── transactions/             # Transaction templates
+│       └── scripts/                  # Read-only scripts
+└── flow.json                         # Flow configuration
+```
 
-1. **No fake implementations** - only real, working code
-2. **TypeScript strict mode** - maintain type safety
-3. **Follow existing patterns** - consistency is key
-4. **Write tests** - maintain high coverage
-5. **Document changes** - update README and docs
+### API Endpoints
 
-See `AGENTS.md` for detailed development guidelines.
+**V3 Markets:**
+- `GET /markets` - List all markets
+- `GET /markets/:slug` - Get market details
+- `POST /markets/:slug/quote` - Get trade quote
+- `POST /markets/:slug/execute` - Execute trade
 
----
+**V4 Markets:**
+- `GET /v4/polymarket/order-book/:id/:idx` - Get order book
+- `GET /v4/polymarket/prices/:id/:idx` - Get effective prices
+- `POST /v4/polymarket/buy-outcome` - Prepare buy transaction
+- `POST /v4/polymarket/sell-outcome` - Prepare sell transaction
 
-## 📝 License
+**TopShot:**
+- `GET /markets/:slug/topshot/options` - Get user moments
+- `POST /markets/:slug/topshot/lock` - Lock moment for bonus
 
-This project is part of the Forte Hacks hackathon submission.
-
----
-
-## 🌟 Acknowledgments
-
-- **Flow Team** - For the incredible blockchain platform
-- **Forte Upgrade** - For revolutionary features (Actions, Scheduled TX)
-- **Flow Community** - For support and feedback
-
----
-
-## 📞 Contact
-
-- **Website**: [werpool.mixas.pro](https://werpool.mixas.pro)
-- **GitHub**: [Your GitHub Profile]
-- **Twitter**: [@yourhandle]
-- **Discord**: [Your Discord]
-
----
-
-## 🎯 Roadmap
-
-### Phase 1 (Current) - MVP ✅
-- [x] Core smart contracts
-- [x] Backend API
-- [x] Frontend UI
-- [x] User transaction signing
-- [x] Charts & analytics
-
-### Phase 2 (Next 2 weeks) - Forte Integration
-- [ ] Flow Actions integration
-- [ ] Scheduled Transactions
-- [ ] Band Protocol oracle
-- [ ] Enhanced analytics
-
-### Phase 3 (1 month) - Production Launch
-- [ ] Mainnet deployment
-- [ ] Advanced trading features
-- [ ] Mobile app (React Native)
-- [ ] API documentation (Swagger)
-
-### Phase 4 (Future) - Expansion
-- [ ] Multi-chain support
-- [ ] NFT integration
-- [ ] Social features
-- [ ] Advanced order types
+**Admin:**
+- `POST /admin/markets/draft` - Create draft market
+- `PUT /admin/markets/:id` - Update draft
+- `POST /admin/markets/:id/publish` - Publish to blockchain
 
 ---
 
-## 🏅 Forte Hacks Submission
+## 🤝 Hackathon Links
 
-**This project demonstrates**:
-- ✅ Deep understanding of Flow blockchain
-- ✅ Production-ready code quality
-- ✅ Innovative use of LMSR for prediction markets
-- ✅ True Web3 with user-signed transactions
-- ✅ Enterprise-grade architecture
-- ✅ Ready for Forte features integration
-
-**We're ready to win!** 🚀
+- **Flow Forte Hacks:** [dorahacks.io/hackathon/forte-hacks](https://dorahacks.io/hackathon/forte-hacks)
+- **Find Labs Docs:** [docs.find.xyz](https://docs.find.xyz)
+- **NBA TopShot API:** [public-api.nbatopshot.com](https://public-api.nbatopshot.com/graphql)
+- **Flow Docs:** [developers.flow.com](https://developers.flow.com)
+- **FCL Documentation:** [developers.flow.com/tools/fcl-js](https://developers.flow.com/tools/fcl-js)
 
 ---
 
-<div align="center">
+## 📄 License
 
-**Built with ❤️ for Flow Forte Hacks**
+MIT License
 
-[View Demo](https://werpool.mixas.pro) • [Documentation](./START_PROJECT.md) • [Report Bug](https://github.com/yourusername/forte-prediction-markets/issues)
+---
 
-</div>
+## 🙏 Acknowledgments
+
+- **Flow Team** - For excellent blockchain infrastructure
+- **Dapper Labs** - For NBA TopShot API access
+- **Find Labs** - For blockchain data API
+- **aiSports** - For AI-powered sports predictions
+
+---
+
+**Built with ❤️ for Flow Forte Hacks 2025**

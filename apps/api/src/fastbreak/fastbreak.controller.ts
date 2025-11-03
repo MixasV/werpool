@@ -54,4 +54,13 @@ export class FastBreakController {
     await this.oracle.settleExpiredChallenges();
     return { message: 'Expired challenges settlement initiated' };
   }
+
+  @Post('challenges/auto-cancel-expired')
+  async autoCancelExpired() {
+    const result = await this.challengeService.autoCancelExpiredPendingChallenges();
+    return { 
+      message: 'Expired pending challenges cancelled',
+      cancelled: result.cancelled 
+    };
+  }
 }

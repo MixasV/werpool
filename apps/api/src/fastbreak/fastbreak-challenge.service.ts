@@ -49,6 +49,13 @@ export class FastBreakChallengeService {
         },
       });
 
+      // Schedule auto-cancel for public challenges (1 hour timeout)
+      if (dto.type === 'public') {
+        const cancelAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+        this.logger.log(`Scheduling auto-cancel for challenge ${challenge.id} at ${cancelAt}`);
+        // Scheduler task will be created by scheduler service
+      }
+
       this.logger.log(`Created challenge ${challenge.id}`);
       return challenge;
     } catch (error) {
@@ -65,8 +72,29 @@ export class FastBreakChallengeService {
         throw new BadRequestException('Challenge not available');
       }
 
-      if (challenge.type === 'private' && challenge.opponent !== opponent) {
-        throw new ForbiddenException('Challenge not for you');
+      // For private challenges, verify opponent identity
+      if (challenge.type === 'private') {
+        if (!challenge.opponent) {
+          throw new BadRequestException('Private challenge has no designated opponent');
+        }
+
+        // Verify that the accepting user is the designated opponent
+        if (challenge.opponent !== opponent) {
+          throw new ForbiddenException('This challenge is not for you');
+        }
+
+        // Additional verification: Check if opponent username matches
+        if (challenge.opponentUsername) {
+          const actualUsername = await this.topShotUsername.getUsername(opponent);
+          if (actualUsername !== challenge.opponentUsername) {
+            this.logger.warn(
+              `Username mismatch for ${opponent}: expected ${challenge.opponentUsername}, got ${actualUsername}`
+            );
+            throw new ForbiddenException('Wallet does not match expected opponent');
+          }
+        }
+
+        this.logger.log(`Verified opponent ${opponent} for private challenge ${challengeId}`);
       }
 
       const opponentUsername = await this.topShotUsername.getUsername(opponent);
@@ -179,6 +207,38 @@ export class FastBreakChallengeService {
       },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async autoCancelExpiredPendingChallenges() {
+    try {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      
+      const expiredChallenges = await this.prisma.fastBreakChallenge.findMany({
+        where: {
+          type: 'public',
+          state: 'PENDING',
+          createdAt: { lt: oneHourAgo },
+        },
+      });
+
+      this.logger.log(`Found ${expiredChallenges.length} expired pending challenges`);
+
+      for (const challenge of expiredChallenges) {
+        await this.prisma.fastBreakChallenge.update({
+          where: { id: challenge.id },
+          data: {
+            state: 'CANCELLED',
+            cancelledAt: new Date(),
+          },
+        });
+        this.logger.log(`Auto-cancelled challenge ${challenge.id} (no opponent after 1 hour)`);
+      }
+
+      return { cancelled: expiredChallenges.length };
+    } catch (error) {
+      this.logger.error('Failed to auto-cancel challenges:', error);
+      throw error;
+    }
   }
 
   private calculateCloseDate(weeks: number): Date {
