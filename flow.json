@@ -1,5 +1,13 @@
 {
 	"contracts": {
+		"AutoRevealHandler": {
+			"source": "./contracts/cadence/contracts/AutoRevealHandler.cdc",
+			"aliases": {
+				"emulator": "0000000000000001",
+				"testing": "0000000000000001",
+				"testnet": "3ea7ac2bcdd8bcef"
+			}
+		},
 		"Burner": {
 			"source": "./contracts/cadence/deps/TestBurner.cdc",
 			"aliases": {
@@ -118,7 +126,8 @@
 				"Burner",
 				"OutcomeToken",
 				"LMSRAmm",
-				"CoreMarketHub"
+				"CoreMarketHub",
+				"AutoRevealHandler"
 			]
 		}
 	},
