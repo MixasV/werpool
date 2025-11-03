@@ -104,7 +104,7 @@ export const AppHeader = () => {
                 Admin
               </Link>
             )}
-            {loggedIn && (
+            {loggedIn && sessionToken && (
               <Link href="/profile" className="app-header__link">
                 Portfolio
               </Link>

@@ -22,14 +22,21 @@ export default async function ProfilePage() {
   const token = store.get(sessionCookieName)?.value ?? null;
 
   if (!token) {
-    redirect("/markets");
+    redirect("/");
   }
 
-  const [profile, points, rolePurchases] = await Promise.all([
-    getProfile(),
-    getPointsSummary(),
-    getRolePurchases(),
-  ]);
+  let profile, points, rolePurchases;
+  
+  try {
+    [profile, points, rolePurchases] = await Promise.all([
+      getProfile(),
+      getPointsSummary(),
+      getRolePurchases(),
+    ]);
+  } catch (error) {
+    console.error("Failed to load profile data:", error);
+    redirect("/");
+  }
 
   return (
     <div className="profile-page">

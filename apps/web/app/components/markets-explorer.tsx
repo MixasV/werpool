@@ -9,7 +9,7 @@ import { MarketCard } from "./market-card";
 const stateOptions: Array<{ value: MarketState | "all"; label: string }> = [
   { value: "all", label: "All" },
   { value: "live", label: "Live" },
-  { value: "draft", label: "Draft" },
+  // { value: "draft", label: "Draft" }, // Hidden: Draft markets not shown on public page
   { value: "suspended", label: "Suspended" },
   { value: "closed", label: "Closed" },
   { value: "settled", label: "Settled" },

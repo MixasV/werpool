@@ -11,7 +11,9 @@ export default async function MarketsPage() {
   let loadFailed = false;
 
   try {
-    markets = await fetchMarkets();
+    const allMarkets = await fetchMarkets();
+    // Filter out draft markets from public markets page
+    markets = allMarkets.filter(market => market.state !== 'draft');
   } catch (error) {
     console.error("Failed to fetch markets list", error);
     loadFailed = true;
