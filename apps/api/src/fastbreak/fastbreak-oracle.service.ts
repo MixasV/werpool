@@ -15,23 +15,92 @@ export class FastBreakOracleService {
     private readonly httpService: HttpService,
   ) {}
 
-  async getFastBreakLeaderboard(week?: number, year?: number) {
+  async getFastBreakLeaderboard(runId?: string) {
     try {
-      this.logger.log(`Fetching FastBreak leaderboard for week ${week}, year ${year}`);
+      this.logger.log(`Fetching FastBreak leaderboard for runId: ${runId || 'latest'}`);
 
       // Query TopShot GraphQL for FastBreak leaderboard
+      // Using correct FastBreak query structure from NBA TopShot API
       const query = `
-        query GetLeaderboard($input: GetLeaderboardInput!) {
-          getLeaderboard(input: $input) {
-            entries {
-              flowAddress
-              username
-              score
+        query GetFastBreak($runId: ID!) {
+          getFastBreak(runId: $runId) {
+            id
+            runId
+            status
+            gameDate
+            leader {
               rank
+              dapperId
+              points
+              user {
+                username
+                flowAddress
+              }
             }
-            pagination {
-              cursor
-              hasNextPage
+          }
+        }
+      `;
+
+      // If no runId provided, get current active FastBreak run
+      const activeRunId = runId || await this.getCurrentFastBreakRunId();
+
+      if (!activeRunId) {
+        this.logger.warn('No active FastBreak run found');
+        return [];
+      }
+
+      const result = await this.executeTopShotQuery<{
+        data: {
+          getFastBreak: {
+            id: string;
+            runId: string;
+            status: string;
+            gameDate: string;
+            leader: Array<{
+              rank: number;
+              dapperId: string;
+              points: number;
+              user: {
+                username: string;
+                flowAddress: string;
+              };
+            }>;
+          };
+        };
+      }>(query, { runId: activeRunId });
+
+      if (!result?.data?.getFastBreak?.leader) {
+        this.logger.warn(`No leaderboard data found for runId ${activeRunId}`);
+        return [];
+      }
+
+      return result.data.getFastBreak.leader.map((entry) => ({
+        address: entry.user.flowAddress,
+        username: entry.user.username,
+        score: entry.points,
+        rank: entry.rank,
+        runId: activeRunId,
+      }));
+    } catch (error) {
+      this.logger.error('Failed to fetch FastBreak leaderboard:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get current active FastBreak run ID
+   * This would need to query the FastBreak runs list or use a known active run
+   */
+  private async getCurrentFastBreakRunId(): Promise<string | null> {
+    try {
+      // Query for active FastBreak runs
+      const query = `
+        query {
+          listFastBreakRuns(filters: { status: ACTIVE }, pagination: { limit: 1 }) {
+            data {
+              id
+              runId
+              status
             }
           }
         }
@@ -39,51 +108,33 @@ export class FastBreakOracleService {
 
       const result = await this.executeTopShotQuery<{
         data: {
-          getLeaderboard: {
-            entries: Array<{
-              flowAddress: string;
-              username: string;
-              score: number;
-              rank: number;
+          listFastBreakRuns: {
+            data: Array<{
+              id: string;
+              runId: string;
+              status: string;
             }>;
-            pagination: {
-              cursor: string | null;
-              hasNextPage: boolean;
-            };
           };
         };
-      }>(query, {
-        input: {
-          leaderboardType: 'FASTBREAK',
-          week: week || this.getCurrentWeekNumber(),
-          year: year || new Date().getFullYear(),
-          limit: 100,
-        },
-      });
+      }>(query, {});
 
-      if (!result?.data?.getLeaderboard?.entries) {
-        this.logger.warn(`No leaderboard data found for week ${week}, year ${year}`);
-        return [];
+      if (result?.data?.listFastBreakRuns?.data?.length > 0) {
+        return result.data.listFastBreakRuns.data[0].runId;
       }
 
-      return result.data.getLeaderboard.entries.map((entry) => ({
-        address: entry.flowAddress,
-        username: entry.username,
-        score: entry.score,
-        rank: entry.rank,
-        week: week || this.getCurrentWeekNumber(),
-        year: year || new Date().getFullYear(),
-      }));
+      return null;
     } catch (error) {
-      this.logger.error('Failed to fetch leaderboard:', error);
-      return [];
+      this.logger.error('Failed to get current FastBreak run:', error);
+      return null;
     }
   }
 
-  async getUserRank(address: string, week?: number, year?: number): Promise<number | null> {
+  async getUserRank(address: string, runId?: string): Promise<number | null> {
     try {
-      const leaderboard = await this.getFastBreakLeaderboard(week, year);
-      const entry = leaderboard.find((e: any) => e.address === address);
+      const leaderboard = await this.getFastBreakLeaderboard(runId);
+      const entry = leaderboard.find((e: any) => 
+        e.address.toLowerCase() === address.toLowerCase()
+      );
       return entry?.rank || null;
     } catch (error) {
       this.logger.error('Failed to get user rank:', error);
@@ -105,11 +156,11 @@ export class FastBreakOracleService {
         throw new BadRequestException('Challenge not closed yet');
       }
 
-      const week = this.getWeekNumber(challenge.closeAt);
-      const year = challenge.closeAt.getFullYear();
+      // Get FastBreak run ID from challenge metadata or use current
+      const runId = (challenge.proof as any)?.runId || null;
 
-      const creatorRank = await this.getUserRank(challenge.creator, week, year);
-      const opponentRank = await this.getUserRank(challenge.opponent!, week, year);
+      const creatorRank = await this.getUserRank(challenge.creator, runId);
+      const opponentRank = await this.getUserRank(challenge.opponent!, runId);
 
       if (!creatorRank || !opponentRank) {
         throw new Error('Could not fetch ranks from FastBreak API');
@@ -127,9 +178,10 @@ export class FastBreakOracleService {
           opponentRank,
           proof: {
             source: 'nba-topshot-fastbreak-api',
-            week,
-            year,
-            timestamp: new Date(),
+            runId: runId || 'unknown',
+            timestamp: new Date().toISOString(),
+            creatorRank,
+            opponentRank,
           },
         },
       });
@@ -163,16 +215,6 @@ export class FastBreakOracleService {
     } catch (error) {
       this.logger.error('Failed to settle expired challenges:', error);
     }
-  }
-
-  private getWeekNumber(date: Date): number {
-    const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-    const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
-    return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
-  }
-
-  private getCurrentWeekNumber(): number {
-    return this.getWeekNumber(new Date());
   }
 
   private async executeTopShotQuery<T>(query: string, variables: Record<string, unknown>): Promise<T> {
