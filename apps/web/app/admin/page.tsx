@@ -64,6 +64,12 @@ import {
   type LeaderboardSnapshot,
   type PointEventSource,
 } from "../lib/points-api";
+import {
+  createMarketsForNewRuns,
+  settleCompletedMarkets,
+  fetchFastBreakMarkets,
+  type FastBreakMarket,
+} from "../lib/fastbreak-api";
 import { RoleAssignmentsPanel } from "./role-assignments-panel";
 import { RolePurchaseRequestsPanel } from "./role-purchase-requests-panel";
 import { MarketTransactionLogPanel } from "../components/market-transaction-log-panel";
@@ -179,7 +185,7 @@ export default async function AdminPage() {
     );
   }
 
-  const [markets, roles, directory, rolePurchaseRequests, monitoring, schedulerTasks, leaderboard, snapshots]: [
+  const [markets, roles, directory, rolePurchaseRequests, monitoring, schedulerTasks, leaderboard, snapshots, fastBreakMarkets]: [
     MarketSummary[],
     RoleAssignment[],
     FlowUser[],
@@ -188,6 +194,7 @@ export default async function AdminPage() {
     SchedulerTask[],
     LeaderboardEntry[],
     LeaderboardSnapshot[],
+    FastBreakMarket[],
   ] = await Promise.all([
     fetchMarkets(),
     fetchRoleAssignments().catch(() => []),
@@ -199,6 +206,7 @@ export default async function AdminPage() {
     fetchSchedulerTasks({ status: "PENDING", limit: 25, auth }),
     fetchLeaderboard(10, auth),
     fetchLeaderboardSnapshots({ limit: 5, auth }),
+    fetchFastBreakMarkets().catch(() => []),
   ]);
 
   const topCounters = [...monitoring.counters]
@@ -913,6 +921,20 @@ export default async function AdminPage() {
       getSessionAuth()
     );
 
+    revalidatePath(ADMIN_PATH);
+  };
+
+  const createFastBreakMarketsAction = async () => {
+    "use server";
+
+    await createMarketsForNewRuns();
+    revalidatePath(ADMIN_PATH);
+  };
+
+  const settleFastBreakMarketsAction = async () => {
+    "use server";
+
+    await settleCompletedMarkets();
     revalidatePath(ADMIN_PATH);
   };
 
@@ -1927,6 +1949,109 @@ export default async function AdminPage() {
             </article>
           </div>
         )}
+      </section>
+
+      <section className="admin-section">
+        <header className="admin-section__header">
+          <div>
+            <h2>FastBreak Prediction Markets</h2>
+            <p className="muted">
+              Automatically create and settle prediction markets for NBA TopShot FastBreak Runs.
+            </p>
+          </div>
+        </header>
+
+        <article className="admin-card">
+          <header className="admin-card__header">
+            <div>
+              <h3>Market operations</h3>
+              <p className="muted">
+                Markets are created when new FastBreak Runs start and settled when Runs complete.
+              </p>
+            </div>
+            <div className="admin-form__actions">
+              <form action={createFastBreakMarketsAction}>
+                <button type="submit" className="button primary">
+                  Create markets for new runs
+                </button>
+              </form>
+              <form action={settleFastBreakMarketsAction}>
+                <button type="submit" className="button secondary">
+                  Settle completed markets
+                </button>
+              </form>
+            </div>
+          </header>
+
+          {fastBreakMarkets.length === 0 ? (
+            <p className="muted">No FastBreak markets yet. Create them for active Runs.</p>
+          ) : (
+            <div className="admin-table">
+              <div className="admin-table__header">
+                <span>Run</span>
+                <span>Title</span>
+                <span>State</span>
+                <span>Outcomes</span>
+                <span>Closes</span>
+                <span>Link</span>
+              </div>
+              {fastBreakMarkets.map((market) => (
+                <div key={market.id} className="admin-table__row">
+                  <span className="admin-badge admin-badge--faded">
+                    {market.runName ?? market.runId?.slice(0, 8) ?? '—'}
+                  </span>
+                  <span>{market.title}</span>
+                  <span className={`admin-market-state admin-market-state--${market.state}`}>
+                    {stateLabel[market.state]}
+                  </span>
+                  <span>{market.tags?.filter(t => !t.startsWith('run:') && t !== 'fastbreak').length ?? 0}</span>
+                  <span>{market.closeAt ? formatDateTime(market.closeAt) : '—'}</span>
+                  <span>
+                    <a
+                      href={`/markets/${market.slug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="button tertiary"
+                    >
+                      View →
+                    </a>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </article>
+
+        <article className="admin-card">
+          <header className="admin-card__header">
+            <div>
+              <h3>Scheduled automation</h3>
+              <p className="muted">
+                Background jobs run automatically on startup and periodically.
+              </p>
+            </div>
+          </header>
+
+          <dl className="admin-market-stats">
+            <div>
+              <dt>Market creation</dt>
+              <dd>Every 1 hour (checks for new FastBreak Runs)</dd>
+            </div>
+            <div>
+              <dt>Leaderboard sync</dt>
+              <dd>Every 1 hour (updates top leaders data)</dd>
+            </div>
+            <div>
+              <dt>Settlement</dt>
+              <dd>Every 24 hours (settles completed Runs)</dd>
+            </div>
+          </dl>
+
+          <p className="muted">
+            Note: These jobs are managed by FastBreakScheduledService and run via setInterval.
+            Initial sync runs on application startup.
+          </p>
+        </article>
       </section>
     </div>
   );

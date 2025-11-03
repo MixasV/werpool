@@ -1,86 +1,140 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+import { API_BASE_URL, parseJson } from "./api-client";
+import type { MarketSummary } from "./markets-api";
 
-export interface FastBreakChallenge {
-  id: string;
-  type: string;
-  bettingType: string;
-  creator: string;
-  creatorUsername?: string;
-  opponent?: string;
-  opponentUsername?: string;
-  creatorStake: number;
-  opponentStake?: number;
-  question: string;
-  duration: number;
-  closeAt: string;
-  state: string;
-  createdAt: string;
-  matchedAt?: string;
-  settledAt?: string;
-  winnerAddress?: string;
-  creatorRank?: number;
-  opponentRank?: number;
-  marketId?: string;
+/**
+ * FastBreak Markets API
+ * 
+ * Fetches prediction markets for NBA TopShot FastBreak Runs
+ * Markets are auto-created by backend when new Runs start
+ */
+
+export interface FastBreakMarket extends MarketSummary {
+  runId?: string;
+  runName?: string;
 }
 
-export async function fetchFastBreakChallenges(): Promise<FastBreakChallenge[]> {
-  const response = await fetch(`${API_BASE_URL}/fastbreak/challenges`, {
-    cache: 'no-store',
+/**
+ * Fetch all FastBreak prediction markets
+ */
+export async function fetchFastBreakMarkets(): Promise<FastBreakMarket[]> {
+  const url = `${API_BASE_URL}/fastbreak/markets`;
+  
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+    },
   });
 
   if (!response.ok) {
-    throw new Error('Failed to fetch challenges');
+    throw new Error(`Failed to fetch FastBreak markets: ${response.statusText}`);
   }
 
-  return response.json();
+  const data = await parseJson<{ total: number; markets: any[] }>(response);
+  
+  // Backend returns { total, markets }
+  if (data.markets && Array.isArray(data.markets)) {
+    return data.markets.map((market) => {
+      // Extract runId from tags (format: "run:xxx-xxx-xxx")
+      const runTag = market.tags?.find((tag: string) => tag.startsWith('run:'));
+      const runId = runTag?.replace('run:', '');
+      
+      // Extract run name from tags (format: last tag is usually the name)
+      const runName = market.tags?.find((tag: string) => 
+        !tag.startsWith('run:') && tag !== 'fastbreak'
+      );
+
+      return {
+        ...market,
+        runId,
+        runName,
+      };
+    });
+  }
+
+  return [];
 }
 
-export async function fetchFastBreakChallenge(id: string): Promise<FastBreakChallenge> {
-  const response = await fetch(`${API_BASE_URL}/fastbreak/challenges/${id}`, {
-    cache: 'no-store',
+/**
+ * Fetch single FastBreak market by ID
+ */
+export async function fetchFastBreakMarket(id: string): Promise<FastBreakMarket | null> {
+  const url = `${API_BASE_URL}/fastbreak/markets/${id}`;
+  
+  const response = await fetch(url, {
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+    },
   });
 
   if (!response.ok) {
-    throw new Error('Failed to fetch challenge');
+    if (response.status === 404) {
+      return null;
+    }
+    throw new Error(`Failed to fetch FastBreak market: ${response.statusText}`);
   }
 
-  return response.json();
+  const market = await parseJson(response);
+  
+  // Extract metadata from tags
+  const runTag = market.tags?.find((tag: string) => tag.startsWith('run:'));
+  const runId = runTag?.replace('run:', '');
+  const runName = market.tags?.find((tag: string) => 
+    !tag.startsWith('run:') && tag !== 'fastbreak'
+  );
+
+  return {
+    ...market,
+    runId,
+    runName,
+  };
 }
 
-export async function createFastBreakChallenge(data: any) {
-  const response = await fetch(`${API_BASE_URL}/fastbreak/challenges`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
+/**
+ * Trigger market creation for new FastBreak Runs (admin only)
+ */
+export async function createMarketsForNewRuns(): Promise<{
+  totalRuns: number;
+  created: number;
+  skipped: number;
+}> {
+  const url = `${API_BASE_URL}/fastbreak/markets/create-for-new-runs`;
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
   });
 
   if (!response.ok) {
-    throw new Error('Failed to create challenge');
+    throw new Error(`Failed to create markets: ${response.statusText}`);
   }
 
-  return response.json();
+  return parseJson(response);
 }
 
-export async function acceptFastBreakChallenge(id: string) {
-  const response = await fetch(`${API_BASE_URL}/fastbreak/challenges/${id}/accept`, {
-    method: 'POST',
+/**
+ * Trigger settlement for completed FastBreak Runs (admin only)
+ */
+export async function settleCompletedMarkets(): Promise<{
+  total: number;
+  settled: number;
+  pending: number;
+}> {
+  const url = `${API_BASE_URL}/fastbreak/markets/settle-completed`;
+  
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
   });
 
   if (!response.ok) {
-    throw new Error('Failed to accept challenge');
+    throw new Error(`Failed to settle markets: ${response.statusText}`);
   }
 
-  return response.json();
-}
-
-export async function cancelFastBreakChallenge(id: string) {
-  const response = await fetch(`${API_BASE_URL}/fastbreak/challenges/${id}/cancel`, {
-    method: 'POST',
-  });
-
-  if (!response.ok) {
-    throw new Error('Failed to cancel challenge');
-  }
-
-  return response.json();
+  return parseJson(response);
 }
