@@ -13,22 +13,24 @@ export interface TopShotMoment {
   id: string;
   flowId: string;
   play: {
-    id: string;
+    id?: string;
     stats: {
       playerName: string;
-      playerId: string;
+      playerID: string; // Note: API uses playerID (uppercase D)
       primaryPosition?: string;
       jerseyNumber?: string;
-      teamName?: string;
-      teamId?: string;
+      homeTeamName?: string;
+      awayTeamName?: string;
+      homeTeamID?: string;
+      awayTeamID?: string;
     };
-    flowRetired: boolean;
+    flowRetired?: boolean;
   };
   set: {
-    id: string;
+    id?: string;
     flowName: string;
   };
-  serialNumber: number;
+  flowSerialNumber: string; // Note: API uses flowSerialNumber
   tier: string;
   price?: {
     value: string;
@@ -36,50 +38,18 @@ export interface TopShotMoment {
   };
 }
 
-export interface SearchMintedMomentsInput {
-  filters?: {
-    byPlayers?: string[];
-    byTeams?: string[];
-    bySets?: string[];
-    byPlays?: string[];
-    bySerial?: {
-      min?: number;
-      max?: number;
-    };
-    byOwnerFlowAddress?: string[];
-  };
-  sortBy?: "CREATED_AT_ASC" | "CREATED_AT_DESC" | "SERIAL_NUMBER_ASC" | "SERIAL_NUMBER_DESC";
-  pagination?: {
-    cursor?: string;
-    limit?: number;
-  };
+export interface UserPublicInfo {
+  username: string;
+  dapperID: string;
+  flowAddress: string;
 }
 
-export interface SearchMintedMomentsResponse {
-  data: {
-    searchMintedMoments: {
-      data: {
-        mintedMoments: TopShotMoment[];
-      };
-      pagination: {
-        cursor: string | null;
-        hasNextPage: boolean;
-      };
-    };
-  };
+export interface UserProfile {
+  publicInfo: UserPublicInfo;
+  momentCount: number;
 }
 
-export interface GetUserMomentsResponse {
-  data: {
-    getUserMomentsByFlowAddress: {
-      moments: TopShotMoment[];
-      pagination: {
-        cursor: string | null;
-        hasNextPage: boolean;
-      };
-    };
-  };
-}
+
 
 @Injectable()
 export class TopShotGraphQLClient {
@@ -88,152 +58,166 @@ export class TopShotGraphQLClient {
   private readonly userAgent = "Werpool-PredictionMarkets/1.0 (https://werpool.mixas.pro)";
 
   /**
-   * Search for minted moments with flexible filters
+   * Get user profile by username (returns dapperID and momentCount)
+   * @param username - TopShot username (e.g., "RemixED" or "0x73d7e1f432f530fd")
+   * @returns User profile with dapperID or null if user not found
    */
-  async searchMintedMoments(input: SearchMintedMomentsInput): Promise<TopShotMoment[]> {
+  async getUserProfileByUsername(username: string): Promise<UserProfile | null> {
     const query = `
-      query SearchMintedMoments($input: SearchMintedMomentsInput!) {
-        searchMintedMoments(input: $input) {
-          data {
-            mintedMoments {
-              id
-              flowId
-              play {
-                id
-                stats {
-                  playerName
-                  playerId
-                  primaryPosition
-                  jerseyNumber
-                  teamName
-                  teamId
-                }
-                flowRetired
-              }
-              set {
-                id
-                flowName
-              }
-              serialNumber
-              tier
-              price {
-                value
-                currency
-              }
-            }
+      query GetUserProfile($input: getUserProfileByUsernameInput!) {
+        getUserProfileByUsername(input: $input) {
+          publicInfo {
+            username
+            dapperID
+            flowAddress
           }
-          pagination {
-            cursor
-            hasNextPage
-          }
+          momentCount
         }
       }
     `;
 
     try {
-      const response = await this.executeQuery<SearchMintedMomentsResponse>(query, { input });
-      return response.data.searchMintedMoments.data.mintedMoments || [];
+      const response = await this.executeQuery<{
+        data: { getUserProfileByUsername: UserProfile };
+      }>(query, { input: { username } });
+      
+      return response.data.getUserProfileByUsername;
     } catch (error) {
-      this.logger.error(`Failed to search minted moments: ${(error as Error).message}`);
-      return [];
+      this.logger.error(`Failed to get profile for @${username}: ${(error as Error).message}`);
+      return null;
     }
   }
 
   /**
-   * Get all moments owned by a specific Flow address
+   * Search moments by owner's Dapper ID
+   * @param dapperID - Dapper user ID (e.g., "google-oauth2|118377731158804273783")
+   * @param options - Pagination and limit options
+   * @returns Array of moments owned by the user
    */
-  async getUserMomentsByFlowAddress(
-    flowAddress: string,
+  async searchMomentsByDapperID(
+    dapperID: string,
     options?: { limit?: number; cursor?: string }
   ): Promise<{ moments: TopShotMoment[]; hasMore: boolean; cursor: string | null }> {
     const query = `
-      query GetUserMoments($input: GetUserMomentsInput!) {
-        getUserMomentsByFlowAddress(input: $input) {
-          moments {
-            id
-            flowId
-            play {
-              id
-              stats {
-                playerName
-                playerId
-                primaryPosition
-                jerseyNumber
-                teamName
-                teamId
+      query SearchUserMoments($input: SearchMintedMomentsInput!) {
+        searchMintedMoments(input: $input) {
+          data {
+            searchSummary {
+              count {
+                count
               }
-              flowRetired
+              pagination {
+                leftCursor
+                rightCursor
+              }
+              data {
+                size
+                data {
+                  id
+                  flowId
+                  play {
+                    stats {
+                      playerName
+                      playerID
+                    }
+                  }
+                  set {
+                    flowName
+                  }
+                  flowSerialNumber
+                  tier
+                }
+              }
             }
-            set {
-              id
-              flowName
-            }
-            serialNumber
-            tier
-            price {
-              value
-              currency
-            }
-          }
-          pagination {
-            cursor
-            hasNextPage
           }
         }
       }
     `;
 
     const input = {
-      flowAddress: this.normalizeFlowAddress(flowAddress),
-      pagination: {
-        limit: options?.limit ?? 100,
-        cursor: options?.cursor,
+      filters: {
+        byOwnerDapperID: [dapperID],
+      },
+      searchInput: {
+        pagination: {
+          cursor: options?.cursor ?? "",
+          direction: "RIGHT",
+          limit: options?.limit ?? 100,
+        },
       },
     };
 
     try {
-      const response = await this.executeQuery<GetUserMomentsResponse>(query, { input });
-      const result = response.data.getUserMomentsByFlowAddress;
-      
-      return {
-        moments: result.moments || [],
-        hasMore: result.pagination.hasNextPage,
-        cursor: result.pagination.cursor,
-      };
+      const response = await this.executeQuery<{
+        data: {
+          searchMintedMoments: {
+            data: {
+              searchSummary: {
+                count: { count: number };
+                pagination: { leftCursor?: string; rightCursor?: string };
+                data: {
+                  size: number;
+                  data: TopShotMoment[];
+                };
+              };
+            };
+          };
+        };
+      }>(query, { input });
+
+      const summary = response.data.searchMintedMoments.data.searchSummary;
+      const moments = summary.data.data || [];
+      const hasMore = moments.length >= (options?.limit ?? 100);
+      const cursor = summary.pagination.rightCursor || null;
+
+      return { moments, hasMore, cursor };
     } catch (error) {
       this.logger.error(
-        `Failed to get moments for ${flowAddress}: ${(error as Error).message}`
+        `Failed to search moments for dapperID ${dapperID}: ${(error as Error).message}`
       );
       return { moments: [], hasMore: false, cursor: null };
     }
   }
 
   /**
-   * Get moments for specific players owned by a user
+   * Get all moments owned by a user via their username
+   * This combines getUserProfileByUsername + searchMomentsByDapperID
+   * @param username - TopShot username
+   * @param options - Pagination and limit options
+   * @returns Array of moments with metadata
    */
-  async getUserMomentsByPlayer(
-    flowAddress: string,
-    playerIds: string[]
-  ): Promise<TopShotMoment[]> {
-    if (playerIds.length === 0) {
-      return [];
+  async getUserMomentsByUsername(
+    username: string,
+    options?: { limit?: number; cursor?: string }
+  ): Promise<{
+    moments: TopShotMoment[];
+    profile: UserProfile | null;
+    hasMore: boolean;
+    cursor: string | null;
+  }> {
+    // Step 1: Get user profile (username → dapperID)
+    const profile = await this.getUserProfileByUsername(username);
+    
+    if (!profile) {
+      this.logger.warn(`User @${username} not found`);
+      return { moments: [], profile: null, hasMore: false, cursor: null };
     }
 
-    const input: SearchMintedMomentsInput = {
-      filters: {
-        byOwnerFlowAddress: [this.normalizeFlowAddress(flowAddress)],
-        byPlayers: playerIds,
-      },
-      pagination: {
-        limit: 100,
-      },
-    };
+    // Step 2: Search moments by dapperID
+    const { moments, hasMore, cursor } = await this.searchMomentsByDapperID(
+      profile.publicInfo.dapperID,
+      options
+    );
 
-    return this.searchMintedMoments(input);
+    return { moments, profile, hasMore, cursor };
   }
+
+
 
   /**
    * Get a single minted moment by its ID
+   * @param momentId - The ID of the moment to retrieve
+   * @returns Moment data or null if not found
    */
   async getMintedMoment(momentId: string): Promise<TopShotMoment | null> {
     const query = `
@@ -242,27 +226,16 @@ export class TopShotGraphQLClient {
           id
           flowId
           play {
-            id
             stats {
               playerName
-              playerId
-              primaryPosition
-              jerseyNumber
-              teamName
-              teamId
+              playerID
             }
-            flowRetired
           }
           set {
-            id
             flowName
           }
-          serialNumber
+          flowSerialNumber
           tier
-          price {
-            value
-            currency
-          }
         }
       }
     `;
@@ -308,11 +281,5 @@ export class TopShotGraphQLClient {
     return json;
   }
 
-  /**
-   * Normalize Flow address to standard format (with 0x prefix)
-   */
-  private normalizeFlowAddress(address: string): string {
-    const trimmed = address.trim();
-    return trimmed.startsWith("0x") ? trimmed : `0x${trimmed}`;
-  }
+
 }
