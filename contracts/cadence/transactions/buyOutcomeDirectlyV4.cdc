@@ -24,26 +24,19 @@ transaction(
     outcomeCount: Int
 ) {
     
-    let userAddress: Address
-    let flowVaultRef: auth(FungibleToken.Withdraw) &FlowToken.Vault
-    
     prepare(signer: auth(Storage, Capabilities) &Account) {
-        self.userAddress = signer.address
-        
         // Get reference to user's Flow vault
-        self.flowVaultRef = signer.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(
+        let flowVaultRef = signer.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(
             from: /storage/flowTokenVault
         ) ?? panic("could not borrow Flow vault reference")
-    }
-    
-    execute {
+        
         // Step 1: Withdraw collateral
-        let collateral <- self.flowVaultRef.withdraw(amount: collateralAmount)
+        let collateral <- flowVaultRef.withdraw(amount: collateralAmount)
         
         // Step 2: Split position - get all outcome tokens
         let outcomeVaults <- CoreMarketContractV4.splitPosition(
             marketId: marketId,
-            user: self.userAddress,
+            user: signer.address,
             collateral: <-collateral
         )
         
@@ -76,7 +69,7 @@ transaction(
                 let orderId = OrderBookV4.createSellOrder(
                     marketId: marketId,
                     outcomeIndex: outcomeIndex,
-                    maker: self.userAddress,
+                    maker: signer.address,
                     price: sellPrice,
                     size: collateralAmount,
                     shares: <-vault

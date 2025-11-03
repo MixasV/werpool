@@ -7,17 +7,11 @@ import SealedBettingV4 from 0x3ea7ac2bcdd8bcef
 // After reveal, user can claim payout if they won
 transaction(betId: UInt64, outcomeIndex: Int, salt: String) {
     
-    let revealerAddress: Address
-    
     prepare(signer: auth(Storage) &Account) {
-        self.revealerAddress = signer.address
-    }
-    
-    execute {
         // Reveal sealed bet
         SealedBettingV4.revealBet(
             betId: betId,
-            revealer: self.revealerAddress,
+            revealer: signer.address,
             outcomeIndex: outcomeIndex,
             salt: salt
         )

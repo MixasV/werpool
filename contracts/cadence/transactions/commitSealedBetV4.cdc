@@ -15,27 +15,20 @@ transaction(
     autoRevealScheduledFor: UFix64?
 ) {
     
-    let bettorAddress: Address
-    let flowVaultRef: auth(FungibleToken.Withdraw) &FlowToken.Vault
-    
     prepare(signer: auth(Storage) &Account) {
-        self.bettorAddress = signer.address
-        
         // Get reference to user's Flow vault
-        self.flowVaultRef = signer.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(
+        let flowVaultRef = signer.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(
             from: /storage/flowTokenVault
         ) ?? panic("could not borrow Flow vault reference")
-    }
-    
-    execute {
+        
         // Withdraw collateral from user's Flow vault
-        let collateral <- self.flowVaultRef.withdraw(amount: amount)
+        let collateral <- flowVaultRef.withdraw(amount: amount)
         
         // Commit sealed bet
         // Contract will hash the choice and encrypt outcome/salt
         let betId = SealedBettingV4.commitSealedBet(
             marketId: marketId,
-            bettor: self.bettorAddress,
+            bettor: signer.address,
             outcomeIndex: outcomeIndex,
             collateral: <-collateral,
             salt: salt,

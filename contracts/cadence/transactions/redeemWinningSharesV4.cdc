@@ -8,19 +8,12 @@ import OutcomeTokenV4 from 0x3ea7ac2bcdd8bcef
 // Example: market settles YES, burn 100 YES → receive 100 FLOW
 transaction(marketId: UInt64, winningOutcomeIndex: Int, amount: UFix64) {
     
-    let userAddress: Address
-    let flowReceiverRef: &{FungibleToken.Receiver}
-    
     prepare(signer: auth(Storage, Capabilities) &Account) {
-        self.userAddress = signer.address
-        
         // Get reference to user's Flow receiver
-        self.flowReceiverRef = signer.capabilities.borrow<&{FungibleToken.Receiver}>(
+        let flowReceiverRef = signer.capabilities.borrow<&{FungibleToken.Receiver}>(
             /public/flowTokenReceiver
         ) ?? panic("could not borrow Flow receiver reference")
-    }
-    
-    execute {
+        
         // Generate storage path for winning outcome
         let suffix = marketId.toString().concat("_").concat(winningOutcomeIndex.toString())
         let storagePath = StoragePath(identifier: "forte_outcomeToken_".concat(suffix))!
@@ -36,11 +29,11 @@ transaction(marketId: UInt64, winningOutcomeIndex: Int, amount: UFix64) {
         // Redeem for collateral (1:1)
         let collateral <- CoreMarketContractV4.redeemWinningShares(
             marketId: marketId,
-            user: self.userAddress,
+            user: signer.address,
             winningVault: <-winningVault
         )
         
         // Deposit collateral to user's Flow vault
-        self.flowReceiverRef.deposit(from: <-collateral)
+        flowReceiverRef.deposit(from: <-collateral)
     }
 }

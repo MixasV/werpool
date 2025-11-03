@@ -8,44 +8,32 @@ import OutcomeTokenV4 from 0x3ea7ac2bcdd8bcef
 // Sell order: returns outcome tokens
 transaction(orderId: UInt64, marketId: UInt64, outcomeIndex: Int, isBuyOrder: Bool) {
     
-    let cancellerAddress: Address
-    let flowReceiverRef: &{FungibleToken.Receiver}?
-    let outcomeReceiverRef: &{FungibleToken.Receiver}?
-    
     prepare(signer: auth(Storage, Capabilities) &Account) {
-        self.cancellerAddress = signer.address
+        // Cancel order and retrieve escrowed funds
+        let returned <- OrderBookV4.cancelOrder(
+            orderId: orderId,
+            canceler: signer.address
+        )
         
+        // Deposit returned funds to appropriate vault
         if isBuyOrder {
             // Buy order - will receive FLOW back
-            self.flowReceiverRef = signer.capabilities.borrow<&{FungibleToken.Receiver}>(
+            let flowReceiverRef = signer.capabilities.borrow<&{FungibleToken.Receiver}>(
                 /public/flowTokenReceiver
             ) ?? panic("could not borrow Flow receiver reference")
-            self.outcomeReceiverRef = nil
+            
+            flowReceiverRef.deposit(from: <-returned)
+            log("Buy order canceled, FLOW returned")
         } else {
             // Sell order - will receive outcome tokens back
             let suffix = marketId.toString().concat("_").concat(outcomeIndex.toString())
             let receiverPath = PublicPath(identifier: "forte_outcomeReceiver_".concat(suffix))!
             
-            self.outcomeReceiverRef = signer.capabilities.borrow<&{FungibleToken.Receiver}>(
+            let outcomeReceiverRef = signer.capabilities.borrow<&{FungibleToken.Receiver}>(
                 receiverPath
             ) ?? panic("could not borrow outcome receiver reference")
-            self.flowReceiverRef = nil
-        }
-    }
-    
-    execute {
-        // Cancel order and retrieve escrowed funds
-        let returned <- OrderBookV4.cancelOrder(
-            orderId: orderId,
-            canceler: self.cancellerAddress
-        )
-        
-        // Deposit returned funds to appropriate vault
-        if isBuyOrder {
-            self.flowReceiverRef!.deposit(from: <-returned)
-            log("Buy order canceled, FLOW returned")
-        } else {
-            self.outcomeReceiverRef!.deposit(from: <-returned)
+            
+            outcomeReceiverRef.deposit(from: <-returned)
             log("Sell order canceled, outcome tokens returned")
         }
     }

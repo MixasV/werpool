@@ -8,19 +8,12 @@ import OutcomeTokenV4 from 0x3ea7ac2bcdd8bcef
 // Example: burn 100 YES + 100 NO → receive 100 FLOW
 transaction(marketId: UInt64, amount: UFix64, outcomeCount: Int) {
     
-    let userAddress: Address
-    let flowReceiverRef: &{FungibleToken.Receiver}
-    
     prepare(signer: auth(Storage, Capabilities) &Account) {
-        self.userAddress = signer.address
-        
         // Get reference to user's Flow receiver
-        self.flowReceiverRef = signer.capabilities.borrow<&{FungibleToken.Receiver}>(
+        let flowReceiverRef = signer.capabilities.borrow<&{FungibleToken.Receiver}>(
             /public/flowTokenReceiver
         ) ?? panic("could not borrow Flow receiver reference")
-    }
-    
-    execute {
+        
         // Withdraw outcome tokens from user's storage
         let outcomeVaults: @{Int: {FungibleToken.Vault}} <- {}
         
@@ -44,11 +37,11 @@ transaction(marketId: UInt64, amount: UFix64, outcomeCount: Int) {
         // Merge position - burn outcome tokens and receive collateral
         let collateral <- CoreMarketContractV4.mergePosition(
             marketId: marketId,
-            user: self.userAddress,
+            user: signer.address,
             outcomeVaults: <-outcomeVaults
         )
         
         // Deposit collateral to user's Flow vault
-        self.flowReceiverRef.deposit(from: <-collateral)
+        flowReceiverRef.deposit(from: <-collateral)
     }
 }

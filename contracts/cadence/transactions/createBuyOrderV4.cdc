@@ -7,30 +7,23 @@ import OrderBookV4 from 0x3ea7ac2bcdd8bcef
 // Example: buy 100 YES tokens at 0.65 price → pays 65 FLOW
 transaction(marketId: UInt64, outcomeIndex: Int, price: UFix64, size: UFix64) {
     
-    let makerAddress: Address
-    let flowVaultRef: auth(FungibleToken.Withdraw) &FlowToken.Vault
-    
     prepare(signer: auth(Storage) &Account) {
-        self.makerAddress = signer.address
-        
         // Get reference to user's Flow vault
-        self.flowVaultRef = signer.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(
+        let flowVaultRef = signer.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(
             from: /storage/flowTokenVault
         ) ?? panic("could not borrow Flow vault reference")
-    }
-    
-    execute {
+        
         // Calculate required collateral: price * size
         let requiredCollateral = price * size
         
         // Withdraw collateral from user's Flow vault
-        let collateral <- self.flowVaultRef.withdraw(amount: requiredCollateral)
+        let collateral <- flowVaultRef.withdraw(amount: requiredCollateral)
         
         // Create buy order (collateral will be escrowed in OrderBook)
         let orderId = OrderBookV4.createBuyOrder(
             marketId: marketId,
             outcomeIndex: outcomeIndex,
-            maker: self.makerAddress,
+            maker: signer.address,
             price: price,
             size: size,
             collateral: <-collateral

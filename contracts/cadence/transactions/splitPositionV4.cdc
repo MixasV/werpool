@@ -8,26 +8,19 @@ import OutcomeTokenV4 from 0x3ea7ac2bcdd8bcef
 // Example: deposit 100 FLOW → receive 100 YES + 100 NO tokens
 transaction(marketId: UInt64, collateralAmount: UFix64) {
     
-    let userAddress: Address
-    let flowVaultRef: auth(FungibleToken.Withdraw) &FlowToken.Vault
-    
     prepare(signer: auth(Storage, Capabilities) &Account) {
-        self.userAddress = signer.address
-        
         // Get reference to user's Flow vault
-        self.flowVaultRef = signer.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(
+        let flowVaultRef = signer.storage.borrow<auth(FungibleToken.Withdraw) &FlowToken.Vault>(
             from: /storage/flowTokenVault
         ) ?? panic("could not borrow Flow vault reference")
-    }
-    
-    execute {
+        
         // Withdraw collateral from user's Flow vault
-        let collateral <- self.flowVaultRef.withdraw(amount: collateralAmount)
+        let collateral <- flowVaultRef.withdraw(amount: collateralAmount)
         
         // Split position - receive outcome tokens for all outcomes
         let outcomeVaults <- CoreMarketContractV4.splitPosition(
             marketId: marketId,
-            user: self.userAddress,
+            user: signer.address,
             collateral: <-collateral
         )
         
