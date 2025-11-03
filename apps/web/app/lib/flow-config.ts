@@ -22,18 +22,13 @@ export const initFlowConfig = (): void => {
     "app.detail.title": appTitle || "Werpool - Flow Prediction Markets",
     "app.detail.description": "Prediction markets on Flow blockchain where your forecast becomes an on-chain asset",
     "app.detail.url": "https://werpool.mixas.pro",
+    "app.detail.icon": appIcon || "https://werpool.mixas.pro/favicon/favicon-96x96.png",
     "accessNode.api": accessNode,
     "discovery.wallet": discoveryWallet,
     "0xCoreMarketHub": contracts.coreMarketHub,
     "0xLMSRAmm": contracts.lmsrAmm,
     "0xOutcomeToken": contracts.outcomeToken,
   };
-
-  // Only add icon if it's a valid URL string (not binary data)
-  const iconUrl = appIcon || "https://werpool.mixas.pro/favicon/apple-touch-icon.png";
-  if (iconUrl && typeof iconUrl === "string" && iconUrl.startsWith("http")) {
-    config["app.detail.icon"] = iconUrl;
-  }
 
   if (process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID) {
     config["walletconnect.projectId"] = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
