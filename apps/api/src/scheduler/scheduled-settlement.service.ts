@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { MarketState, SchedulerTaskStatus, SchedulerTaskType } from '@prisma/client';
 import { SportsOracleService } from '../oracles/sports-oracle.service';
@@ -242,5 +243,57 @@ export class ScheduledSettlementService {
     });
 
     this.logger.log(`Created settlement task for market ${marketId}, outcome ${outcomeIndex}`);
+  }
+
+  /**
+   * Auto-reveal expired sealed bets (cron fallback)
+   * Runs every 6 hours to catch any sealed bets that weren't auto-revealed
+   * by Flow Scheduled Transactions (network issues, handler failures, etc.)
+   */
+  @Cron(CronExpression.EVERY_6_HOURS)
+  async processExpiredSealedBets(): Promise<void> {
+    const now = new Date();
+
+    // Find sealed bets that should have been auto-revealed
+    const expiredBets = await this.prisma.sealedBet.findMany({
+      where: {
+        status: 'COMMITTED',
+        autoRevealScheduledFor: { lte: now },
+      },
+      take: 50,
+    });
+
+    if (expiredBets.length === 0) {
+      return;
+    }
+
+    this.logger.log(
+      `Processing ${expiredBets.length} expired sealed bets (cron fallback)`
+    );
+
+    for (const bet of expiredBets) {
+      try {
+        // Mark as FORFEITED (user lost opportunity to reveal)
+        // In production, this would trigger autoRevealSealedBetV4.cdc transaction
+        await this.prisma.sealedBet.update({
+          where: { id: bet.id },
+          data: {
+            status: 'FORFEITED',
+            revealTime: now,
+          },
+        });
+
+        this.logger.warn(
+          `Forfeited sealed bet ${bet.id} due to timeout (auto-reveal failed or delayed)`
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to forfeit expired sealed bet ${bet.id}:`,
+          error
+        );
+      }
+    }
+
+    this.logger.log(`Processed ${expiredBets.length} expired sealed bets`);
   }
 }

@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { ScheduleModule } from "@nestjs/schedule";
 
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
@@ -28,6 +29,7 @@ const RATE_LIMIT_LIMIT = Number(process.env.RATE_LIMIT_LIMIT ?? "120");
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot({
       throttlers: [
         {
