@@ -439,6 +439,7 @@ enum RoleType {
   OPERATOR
   ORACLE
   PATROL
+  GAMBLER
 }
 
 enum PatrolSignalSeverity {
