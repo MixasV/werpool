@@ -3,6 +3,7 @@ import { FastBreakChallengeService } from './fastbreak-challenge.service';
 import { FastBreakOracleService } from './fastbreak-oracle.service';
 import { FastBreakScraperService } from './fastbreak-scraper.service';
 import { FastBreakSyncService } from './fastbreak-sync.service';
+import { FastBreakMarketService } from './fastbreak-market.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('fastbreak')
@@ -12,6 +13,7 @@ export class FastBreakController {
     private readonly oracle: FastBreakOracleService,
     private readonly scraper: FastBreakScraperService,
     private readonly syncService: FastBreakSyncService,
+    private readonly marketService: FastBreakMarketService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -145,6 +147,60 @@ export class FastBreakController {
         verification: 'Non-leaders can still create challenges but may need manual verification',
       },
     };
+  }
+
+  /**
+   * PREDICTION MARKETS ENDPOINTS (NEW!)
+   * Auto-create markets for FastBreak Runs
+   */
+
+  @Post('markets/create-for-new-runs')
+  async createMarketsForNewRuns() {
+    const result = await this.marketService.createMarketsForNewRuns();
+    return {
+      message: 'FastBreak markets created for new runs',
+      ...result,
+    };
+  }
+
+  @Post('markets/settle-completed')
+  async settleCompletedMarkets() {
+    const result = await this.marketService.settleCompletedRuns();
+    return {
+      message: 'Completed FastBreak markets settled',
+      ...result,
+    };
+  }
+
+  @Get('markets')
+  async getFastBreakMarkets() {
+    const markets = await this.marketService.getAllFastBreakMarkets();
+    return {
+      total: markets.length,
+      markets: markets.map((market) => ({
+        id: market.id,
+        title: market.title,
+        description: market.description,
+        state: market.state,
+        closeAt: market.closeAt,
+        outcomes: market.outcomes,
+        tags: market.tags,
+      })),
+    };
+  }
+
+  @Get('markets/:id')
+  async getFastBreakMarket(@Param('id') id: string) {
+    const market = await this.prisma.market.findUnique({
+      where: { id },
+      include: { outcomes: true },
+    });
+
+    if (!market) {
+      return { error: 'Market not found' };
+    }
+
+    return market;
   }
 
   private getCurrentWeekNumber(): number {
