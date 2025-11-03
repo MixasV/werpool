@@ -81,13 +81,13 @@ export class TopShotService {
     
     return result.moments.map((gqlMoment) => ({
       id: gqlMoment.flowId,
-      playId: gqlMoment.play.id,
-      setId: gqlMoment.set.id,
-      serialNumber: gqlMoment.serialNumber,
-      playerId: gqlMoment.play.stats.playerId,
+      playId: gqlMoment.play.id ?? "0",
+      setId: gqlMoment.set.id ?? "0",
+      serialNumber: parseInt(gqlMoment.flowSerialNumber, 10) || 0, // flowSerialNumber is string
+      playerId: gqlMoment.play.stats.playerID, // Note: playerID not playerId
       fullName: gqlMoment.play.stats.playerName,
-      teamName: gqlMoment.play.stats.teamName,
-      teamId: gqlMoment.play.stats.teamId,
+      teamName: gqlMoment.play.stats.homeTeamName ?? gqlMoment.play.stats.awayTeamName, // Use either team
+      teamId: gqlMoment.play.stats.homeTeamID ?? gqlMoment.play.stats.awayTeamID,
       primaryPosition: gqlMoment.play.stats.primaryPosition,
       jerseyNumber: gqlMoment.play.stats.jerseyNumber,
       tier: this.normalizeTier(gqlMoment.tier),

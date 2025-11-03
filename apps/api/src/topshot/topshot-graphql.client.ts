@@ -58,6 +58,102 @@ export class TopShotGraphQLClient {
   private readonly userAgent = "Werpool-PredictionMarkets/1.0 (https://werpool.mixas.pro)";
 
   /**
+   * Get moments by Flow address directly (simplest method)
+   * @param flowAddress - Flow address with or without 0x prefix
+   * @param options - Pagination and limit options
+   * @returns Array of moments owned by the address
+   */
+  async getUserMomentsByFlowAddress(
+    flowAddress: string,
+    options?: { limit?: number; cursor?: string }
+  ): Promise<{ moments: TopShotMoment[]; hasMore: boolean; cursor: string | null }> {
+    // Remove 0x prefix if present (API requires address without 0x)
+    const cleanAddress = flowAddress.toLowerCase().replace(/^0x/, '');
+    
+    const query = `
+      query SearchUserMoments($input: SearchMintedMomentsInput!) {
+        searchMintedMoments(input: $input) {
+          data {
+            searchSummary {
+              count {
+                count
+              }
+              pagination {
+                leftCursor
+                rightCursor
+              }
+              data {
+                size
+                data {
+                  ... on MintedMoment {
+                    id
+                    flowId
+                    play {
+                      stats {
+                        playerName
+                        playerID
+                      }
+                    }
+                    set {
+                      flowName
+                    }
+                    flowSerialNumber
+                    tier
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    `;
+
+    const input = {
+      filters: {
+        byOwnerFlowAddress: [cleanAddress],
+      },
+      searchInput: {
+        pagination: {
+          cursor: options?.cursor ?? "",
+          direction: "RIGHT",
+          limit: options?.limit ?? 100,
+        },
+      },
+    };
+
+    try {
+      const response = await this.executeQuery<{
+        data: {
+          searchMintedMoments: {
+            data: {
+              searchSummary: {
+                count: { count: number };
+                pagination: { leftCursor?: string; rightCursor?: string };
+                data: {
+                  size: number;
+                  data: TopShotMoment[];
+                };
+              };
+            };
+          };
+        };
+      }>(query, { input });
+
+      const summary = response.data.searchMintedMoments.data.searchSummary;
+      const moments = summary.data.data || [];
+      const hasMore = moments.length >= (options?.limit ?? 100);
+      const cursor = summary.pagination.rightCursor || null;
+
+      return { moments, hasMore, cursor };
+    } catch (error) {
+      this.logger.error(
+        `Failed to search moments for flow address ${cleanAddress}: ${(error as Error).message}`
+      );
+      return { moments: [], hasMore: false, cursor: null };
+    }
+  }
+
+  /**
    * Get user profile by username (returns dapperID and momentCount)
    * @param username - TopShot username (e.g., "RemixED" or "0x73d7e1f432f530fd")
    * @returns User profile with dapperID or null if user not found
