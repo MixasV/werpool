@@ -89,38 +89,27 @@ export class FastBreakOracleService {
 
   /**
    * Get current active FastBreak run ID
-   * This would need to query the FastBreak runs list or use a known active run
+   * 
+   * HONEST NOTE: TopShot GraphQL API for FastBreak runs is complex and changes.
+   * For now, return null to allow manual runId specification.
+   * In production, admin can specify runId when creating challenge.
+   * 
+   * TODO: Implement proper FastBreak API integration when structure is stable
    */
   private async getCurrentFastBreakRunId(): Promise<string | null> {
     try {
-      // Query for active FastBreak runs
-      const query = `
-        query {
-          listFastBreakRuns(filters: { status: ACTIVE }, pagination: { limit: 1 }) {
-            data {
-              id
-              runId
-              status
-            }
-          }
-        }
-      `;
-
-      const result = await this.executeTopShotQuery<{
-        data: {
-          listFastBreakRuns: {
-            data: Array<{
-              id: string;
-              runId: string;
-              status: string;
-            }>;
-          };
-        };
-      }>(query, {});
-
-      if (result?.data?.listFastBreakRuns?.data?.length > 0) {
-        return result.data.listFastBreakRuns.data[0].runId;
+      // Option 1: Try to get from environment variable
+      const configuredRunId = process.env.FASTBREAK_CURRENT_RUN_ID;
+      if (configuredRunId) {
+        this.logger.log(`Using configured FastBreak runId: ${configuredRunId}`);
+        return configuredRunId;
       }
+
+      // Option 2: Try TopShot API (if we know the correct structure)
+      // For now, return null and log warning
+      this.logger.warn(
+        'No FastBreak runId configured. Set FASTBREAK_CURRENT_RUN_ID env variable or specify runId in challenge metadata'
+      );
 
       return null;
     } catch (error) {
