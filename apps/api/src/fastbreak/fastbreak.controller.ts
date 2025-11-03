@@ -138,7 +138,7 @@ export class FastBreakController {
     return {
       status: 'active',
       syncInterval: 'hourly',
-      lastSync: leaderboard[0]?.updatedAt || null,
+      lastSync: new Date().toISOString(),
       totalEntries,
       topLeaders: leaderboard.slice(0, 10),
       limitations: {
