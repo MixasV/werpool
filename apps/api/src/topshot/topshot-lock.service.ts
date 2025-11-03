@@ -12,10 +12,10 @@ import {
 
 interface LockMomentOptions {
   marketId: string;
-  outcomeIndex: number;
   userAddress: string;
   momentId: string;
   estimatedReward?: number | null;
+  // outcomeIndex removed - card is locked for the event, not specific outcome
 }
 
 @Injectable()
@@ -38,21 +38,6 @@ export class TopShotLockService {
 
     if (!market) {
       throw new BadRequestException("Market not found");
-    }
-
-    const outcome = market.outcomes[options.outcomeIndex];
-    if (!outcome) {
-      throw new BadRequestException("Invalid outcome index");
-    }
-
-    const outcomeType = this.extractOutcomeType(outcome.metadata);
-    if (outcomeType !== "home" && outcomeType !== "away") {
-      throw new BadRequestException("Top Shot bonuses are available only for win outcomes");
-    }
-
-    const outcomeTeam = this.extractOutcomeTeam(outcome.metadata);
-    if (!outcomeTeam) {
-      throw new BadRequestException("Outcome team metadata is missing");
     }
 
     const eventContext = this.extractEventContext(market.tags ?? []);
@@ -78,19 +63,14 @@ export class TopShotLockService {
       throw new BadRequestException("Moment not found in owner collection");
     }
 
-    if (!this.isMomentEligibleForTeam(moment, outcomeTeam)) {
-      throw new BadRequestException("Selected moment does not match team for chosen outcome");
-    }
+    // No team eligibility check - card is locked for the event regardless of team
+    // Bonus is determined at settlement based on user's shares and card's team
 
     await this.ensureMomentNotLockedElsewhere(moment.id, market.id);
 
     const rarity = moment.tier;
-    const estimatedReward =
-      options.estimatedReward ??
-      this.estimateProjectedBonus(moment, {
-        outcomeType,
-        teamName: outcomeTeam.teamName,
-      });
+    const estimatedReward = options.estimatedReward ?? this.estimateGenericBonus(moment);
+    
     const existing = await this.prisma.topShotMomentLock.findUnique({
       where: {
         userAddress_marketId: {
@@ -106,17 +86,17 @@ export class TopShotLockService {
       eventId: eventContext.eventId,
       momentId: moment.id,
       rarity,
-      outcomeType,
-      outcomeIndex: options.outcomeIndex,
+      // outcomeType and outcomeIndex are determined at settlement
+      outcomeType: null,
+      outcomeIndex: null,
       playerId: moment.playerId ?? undefined,
       playerName: moment.fullName,
-      teamName: moment.teamName ?? outcomeTeam.teamName,
+      teamName: moment.teamName,
       changeDeadline,
       lockedUntil,
       estimatedReward: estimatedReward != null ? new Prisma.Decimal(estimatedReward) : null,
       status: MomentLockStatus.ACTIVE,
       metadata: {
-        outcomeTeam,
         playId: moment.playId,
         setId: moment.setId,
         serialNumber: moment.serialNumber,
@@ -191,13 +171,40 @@ export class TopShotLockService {
     });
   }
 
-  async createLock(userAddress: string, dto: any): Promise<TopShotMomentLockDto> {
-    throw new Error("createLock not yet implemented");
+  async createLock(userAddress: string, dto: { marketId: string; eventId: string; momentId: string }): Promise<TopShotMomentLockDto> {
+    return this.lockMoment({
+      marketId: dto.marketId,
+      userAddress,
+      momentId: dto.momentId,
+    });
   }
 
-  async updateLock(lockId: string, userAddress: string, dto: any): Promise<TopShotMomentLockDto> {
-    throw new Error("updateLock not yet implemented");
+  async updateLock(lockId: string, userAddress: string, dto: { momentId: string }): Promise<TopShotMomentLockDto> {
+    const lock = await this.prisma.topShotMomentLock.findUnique({
+      where: { id: lockId },
+    });
+
+    if (!lock || lock.userAddress.toLowerCase() !== userAddress.toLowerCase()) {
+      throw new BadRequestException("Lock not found or unauthorized");
+    }
+
+    if (lock.status !== MomentLockStatus.ACTIVE) {
+      throw new BadRequestException("Cannot update non-active lock");
+    }
+
+    const now = new Date();
+    if (now > lock.changeDeadline) {
+      throw new BadRequestException("Change deadline has passed");
+    }
+
+    return this.lockMoment({
+      marketId: lock.marketId,
+      userAddress,
+      momentId: dto.momentId,
+    });
   }
+
+
 
   async getUserLocks(userAddress: string): Promise<TopShotMomentLockDto[]> {
     const normalized = userAddress.toLowerCase();
@@ -219,24 +226,17 @@ export class TopShotLockService {
   buildProjectedBonus(moment: TopShotMomentDetail, params: {
     marketId: string;
     eventId: string;
-    outcomeType: "home" | "away" | "draw" | "cancel" | "unknown";
-    outcomeIndex: number;
     estimatedReward?: number | null;
   }): TopShotProjectedBonus {
     return {
       momentId: moment.id,
       marketId: params.marketId,
       eventId: params.eventId,
-      outcomeType: params.outcomeType,
+      outcomeType: "unknown",  // Determined at settlement
       playerId: moment.playerId,
       playerName: moment.fullName,
       rarity: moment.tier,
-      projectedPoints:
-        params.estimatedReward ??
-        this.estimateProjectedBonus(moment, {
-          outcomeType: params.outcomeType,
-          teamName: moment.teamName ?? "",
-        }),
+      projectedPoints: params.estimatedReward ?? this.estimateGenericBonus(moment),
       capPerMatch: this.resolveRarityCap(moment.tier),
     } satisfies TopShotProjectedBonus;
   }
@@ -347,7 +347,7 @@ export class TopShotLockService {
       userAddress: record.userAddress,
       rarity: record.rarity as TopShotMomentTier,
       outcomeType: record.outcomeType as TopShotMomentLockDto["outcomeType"],
-      outcomeIndex: record.outcomeIndex,
+      outcomeIndex: record.outcomeIndex ?? undefined,
       playerId: record.playerId ?? undefined,
       playerName: record.playerName ?? undefined,
       teamName: record.teamName ?? undefined,
@@ -374,17 +374,16 @@ export class TopShotLockService {
     }
   }
 
-  private estimateProjectedBonus(
-    moment: TopShotMomentDetail,
-    params: { outcomeType: string; teamName: string }
-  ): number {
+  /**
+   * Estimate generic bonus for any card (avg 30-50% of cap)
+   */
+  private estimateGenericBonus(moment: TopShotMomentDetail): number {
     const cap = this.resolveRarityCap(moment.tier);
-    const base = cap * 0.6;
-    const serialBoost = moment.serialNumber > 0 ? Math.max(0.85, Math.min(1.1, 100 / moment.serialNumber)) : 1;
+    const base = cap * 0.4; // 40% of cap as baseline
+    const serialBoost = moment.serialNumber > 0 ? Math.max(0.9, Math.min(1.15, 100 / moment.serialNumber)) : 1;
     const positionBoost = moment.primaryPosition && moment.primaryPosition.toLowerCase().includes("g") ? 1.05 : 1;
-    const matchupFactor = params.outcomeType === "home" ? 1.05 : 1;
 
-    const projected = base * serialBoost * positionBoost * matchupFactor;
-    return Number(Math.min(cap, Math.max(15, projected)).toFixed(2));
+    const projected = base * serialBoost * positionBoost;
+    return Number(Math.min(cap, Math.max(10, projected)).toFixed(2)); // Minimum 10 pts
   }
 }

@@ -32,8 +32,6 @@ interface RewardCandidate {
   userAddress: string;
   momentId: string;
   rarity: TopShotMomentTier;
-  outcomeType: "home" | "away" | "draw" | "cancel" | "unknown";
-  outcomeIndex: number;
   playerId?: string;
   playerName?: string;
   teamName?: string;
@@ -99,87 +97,88 @@ export class TopShotRewardService {
       this.logger.log("Falling back to oracle player data");
       playerStats = this.normalizePlayerStats(payload.players);
     }
-    const eligibleLocks = locks
-      .filter((lock) => lock.outcomeType === winningOutcome.type && lock.outcomeIndex === winningOutcome.index)
-      .map((lock) => this.toCandidate(lock));
+    // NEW LOGIC: Process ALL locks regardless of team
+    // Bonus is determined by:
+    // 1. User has shares on winning outcome
+    // 2. Card's team matches winning team → full bonus (min 10 pts)
+    // 3. Card's team doesn't match but player participated → min 15 pts
+    // 4. Any locked card with shares → min 10 pts
 
-    const losingLocks = locks.filter(
-      (lock) => lock.outcomeType !== winningOutcome.type || lock.outcomeIndex !== winningOutcome.index
-    );
-
-    if (losingLocks.length > 0) {
-      await Promise.all(
-        losingLocks.map((lock) =>
-          this.prisma.topShotMomentLock.update({
-            where: { id: lock.id },
-            data: {
-              status: MomentLockStatus.RELEASED,
-              releasedAt: new Date(),
-            },
-          })
-        )
-      );
-    }
-
-    if (eligibleLocks.length === 0) {
+    if (locks.length === 0) {
       return;
     }
 
-    const ownersByPlayer = this.groupByPlayer(eligibleLocks);
+    const candidates = locks.map((lock) => this.toCandidate(lock));
+    const ownersByPlayer = this.groupByPlayer(candidates);
 
     const rewardRecords: Array<Promise<void>> = [];
-    for (const candidate of eligibleLocks) {
-      const performance = this.pickPerformance(playerStats, candidate);
-      if (!performance) {
-        this.logger.warn(`No performance data for player ${candidate.playerId ?? candidate.playerName ?? candidate.momentId}`);
-        rewardRecords.push(this.markLock(candidate.lockId, MomentLockStatus.EXPIRED));
-        continue;
-      }
-
-      const score = this.computePerformanceScore(performance);
-      if (score <= 0) {
-        rewardRecords.push(this.markLock(candidate.lockId, MomentLockStatus.EXPIRED));
-        continue;
-      }
-
-      const multiplier = this.rarityMultipliers[candidate.rarity] ?? 1.0;
-      const rawPoints = score * multiplier;
-      const cap = this.resolveRarityCap(candidate.rarity);
-      const capped = Math.min(rawPoints, cap, 150);
-
-      const owners = ownersByPlayer.get(candidate.playerId ?? candidate.playerName ?? candidate.momentId) ?? [];
-      const ownershipFactor = Math.min(0.5, owners.length > 0 ? 1 / owners.length : 1);
-      const adjusted = capped * ownershipFactor;
-
+    for (const candidate of candidates) {
+      // Check if user has shares on winning outcome
       const netShares = await this.resolveNetShares(params.marketId, candidate.userAddress, winningOutcome.index);
       if (netShares <= 0) {
-        rewardRecords.push(this.markLock(candidate.lockId, MomentLockStatus.EXPIRED));
+        // No shares on winning outcome → no bonus
+        rewardRecords.push(this.markLock(candidate.lockId, MomentLockStatus.RELEASED));
         continue;
       }
 
+      // Check activity requirement
       const isActiveTrader = await this.hasRecentActivity(candidate.userAddress);
       if (!isActiveTrader) {
         rewardRecords.push(this.markLock(candidate.lockId, MomentLockStatus.EXPIRED));
         continue;
       }
 
+      // Check daily cap
       const dailyBudget = await this.getRemainingDailyCap(candidate.userAddress);
       if (dailyBudget <= 0) {
         rewardRecords.push(this.markLock(candidate.lockId, MomentLockStatus.RELEASED));
         continue;
       }
 
-      const awardedPoints = Math.min(adjusted, dailyBudget, cap);
-      if (awardedPoints <= 0.01) {
+      // Determine team match
+      const winningTeam = winningOutcome.team?.toLowerCase().replace(/[^a-z0-9]/g, '') ?? '';
+      const cardTeam = candidate.teamName?.toLowerCase().replace(/[^a-z0-9]/g, '') ?? '';
+      const isTeamMatch = winningTeam && cardTeam && cardTeam.includes(winningTeam);
+
+      // Get player performance
+      const performance = this.pickPerformance(playerStats, candidate);
+      const playerParticipated = performance !== null;
+
+      let awardedPoints = 0;
+
+      if (isTeamMatch && performance) {
+        // FULL BONUS: Team match + player played
+        const score = this.computePerformanceScore(performance);
+        const multiplier = this.rarityMultipliers[candidate.rarity] ?? 1.0;
+        const rawPoints = score * multiplier;
+        const cap = this.resolveRarityCap(candidate.rarity);
+        const capped = Math.min(rawPoints, cap, 150);
+
+        const owners = ownersByPlayer.get(candidate.playerId ?? candidate.playerName ?? candidate.momentId) ?? [];
+        const ownershipFactor = Math.min(0.5, owners.length > 0 ? 1 / owners.length : 1);
+        const adjusted = capped * ownershipFactor;
+
+        // Minimum 10 points for team match
+        awardedPoints = Math.max(10, Math.min(adjusted, dailyBudget, cap));
+      } else if (!isTeamMatch && playerParticipated) {
+        // PARTICIPATION BONUS: Wrong team but player participated → min 15 pts
+        awardedPoints = Math.min(15, dailyBudget);
+      } else {
+        // GENERIC BONUS: Any card with shares → min 10 pts
+        awardedPoints = Math.min(10, dailyBudget);
+      }
+
+      if (awardedPoints < 0.01) {
         rewardRecords.push(this.markLock(candidate.lockId, MomentLockStatus.RELEASED));
         continue;
       }
 
       rewardRecords.push(this.awardCandidate(candidate, params, awardedPoints, {
-        score,
-        multiplier,
-        ownershipFactor,
+        score: performance ? this.computePerformanceScore(performance) : 0,
+        multiplier: this.rarityMultipliers[candidate.rarity] ?? 1.0,
+        ownershipFactor: 1,
         netShares,
+        bonusType: isTeamMatch ? 'FULL' : (playerParticipated ? 'PARTICIPATION' : 'GENERIC'),
       }));
     }
 
@@ -190,16 +189,20 @@ export class TopShotRewardService {
     candidate: RewardCandidate,
     context: RewardComputationContext,
     points: number,
-    debug: { score: number; multiplier: number; ownershipFactor: number; netShares: number }
+    debug: { score: number; multiplier: number; ownershipFactor: number; netShares: number; bonusType: string }
   ): Promise<void> {
     const amount = Number(points.toFixed(4));
+
+    const bonusTypeLabel = debug.bonusType === 'FULL' ? 'Team Match Bonus' 
+      : debug.bonusType === 'PARTICIPATION' ? 'Participation Bonus' 
+      : 'Generic Bonus';
 
     await this.pointsService.recordEvent({
       address: candidate.userAddress,
       source: PointEventSource.TOPSHOT,
       amount,
       reference: `topshot:${context.marketId}:${candidate.momentId}`,
-      notes: `Player performance bonus: ${candidate.playerName ?? candidate.playerId ?? "Unknown"}`,
+      notes: `${bonusTypeLabel}: ${candidate.playerName ?? candidate.playerId ?? "Unknown"}`,
     });
 
     await this.prisma.topShotReward.create({
@@ -208,7 +211,7 @@ export class TopShotRewardService {
         userAddress: candidate.userAddress,
         marketId: context.marketId,
         eventId: context.eventId,
-        outcomeIndex: candidate.outcomeIndex,
+        outcomeIndex: context.outcomeIndex,
         momentId: candidate.momentId,
         points: new Prisma.Decimal(amount),
         metadata: {
@@ -219,6 +222,7 @@ export class TopShotRewardService {
           multiplier: debug.multiplier,
           ownershipFactor: debug.ownershipFactor,
           netShares: debug.netShares,
+          bonusType: debug.bonusType,
         },
       },
     });
@@ -277,8 +281,6 @@ export class TopShotRewardService {
       userAddress: lock.userAddress,
       momentId: lock.momentId,
       rarity: (lock.rarity as TopShotMomentTier) ?? "Unknown",
-      outcomeType: (lock.outcomeType as RewardCandidate["outcomeType"]) ?? "unknown",
-      outcomeIndex: lock.outcomeIndex ?? 0,
       playerId: lock.playerId ?? undefined,
       playerName: lock.playerName ?? undefined,
       teamName: lock.teamName ?? undefined,
@@ -320,7 +322,7 @@ export class TopShotRewardService {
       });
   }
 
-  private async resolveWinningOutcome(marketId: string, resolvedOutcomeId: string): Promise<{ index: number; type: "home" | "away" | "draw" | "cancel" }> {
+  private async resolveWinningOutcome(marketId: string, resolvedOutcomeId: string): Promise<{ index: number; type: "home" | "away" | "draw" | "cancel"; team?: string }> {
     const market = await this.prisma.market.findUnique({
       where: { id: marketId },
       include: { outcomes: true },
@@ -339,11 +341,15 @@ export class TopShotRewardService {
     if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
       return { index, type: "cancel" };
     }
-    const value = (metadata as Record<string, unknown>).type;
+    
+    const record = metadata as Record<string, unknown>;
+    const value = record.type;
+    const team = typeof record.team === 'string' ? record.team : undefined;
+    
     if (value === "home" || value === "away" || value === "draw" || value === "cancel") {
-      return { index, type: value };
+      return { index, type: value, team };
     }
-    return { index, type: "cancel" };
+    return { index, type: "cancel", team };
   }
 
   private pickPerformance(stats: PlayerPerformance[], candidate: RewardCandidate): PlayerPerformance | null {

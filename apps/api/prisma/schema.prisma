@@ -41,7 +41,7 @@ model Market {
   mflMatches          MFLMatch[]                @relation("MFLMatchMarket")
   fastBreakChallenges FastBreakChallenge[]      @relation("FastBreakChallengeMarket")
   sealedBets          SealedBet[]
-  
+
   @@index([contractVersion])
   @@index([isArchived])
   @@index([blockchainMarketId])
@@ -264,8 +264,8 @@ model TopShotMomentLock {
   playerId        String?
   playerName      String?
   teamName        String?
-  outcomeType     String
-  outcomeIndex    Int
+  outcomeType     String? // Optional: determined at settlement
+  outcomeIndex    Int? // Optional: determined at settlement
   lockedAt        DateTime         @default(now())
   changeDeadline  DateTime
   lockedUntil     DateTime
@@ -629,21 +629,21 @@ model FastBreakLeaderboard {
 }
 
 model SealedBet {
-  id                      String          @id @default(uuid())
-  marketId                String
-  userAddress             String
-  amount                  Decimal         @db.Decimal(18, 8)
-  encryptedSalt           String
-  outcomeIndex            Int
-  status                  SealedBetStatus @default(COMMITTED)
-  commitTime              DateTime        @default(now())
-  revealTime              DateTime?
-  autoRevealScheduledFor  DateTime?
-  transactionHash         String
-  revealTransactionHash   String?
-  createdAt               DateTime        @default(now())
-  updatedAt               DateTime        @updatedAt
-  market                  Market          @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  id                     String          @id @default(uuid())
+  marketId               String
+  userAddress            String
+  amount                 Decimal         @db.Decimal(18, 8)
+  encryptedSalt          String
+  outcomeIndex           Int
+  status                 SealedBetStatus @default(COMMITTED)
+  commitTime             DateTime        @default(now())
+  revealTime             DateTime?
+  autoRevealScheduledFor DateTime?
+  transactionHash        String
+  revealTransactionHash  String?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  market                 Market          @relation(fields: [marketId], references: [id], onDelete: Cascade)
 
   @@index([marketId])
   @@index([userAddress])

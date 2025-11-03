@@ -11,15 +11,12 @@ export class CreateMomentLockDto {
   @IsString()
   momentId: string;
 
-  @IsInt()
-  @Min(0)
-  outcomeIndex: number;
+  // outcomeIndex removed - card locked for event, not specific outcome
 }
 
 export class UpdateMomentLockDto {
-  @IsInt()
-  @Min(0)
-  outcomeIndex: number;
+  @IsString()
+  momentId: string;  // Can change moment before deadline
 }
 
 export class MomentLockResponseDto {
@@ -32,8 +29,8 @@ export class MomentLockResponseDto {
   playerId?: string;
   playerName?: string;
   teamName?: string;
-  outcomeType: string;
-  outcomeIndex: number;
+  outcomeType?: string | null;  // Optional: determined at settlement
+  outcomeIndex?: number | null; // Optional: determined at settlement
   lockedAt: Date;
   changeDeadline: Date;
   lockedUntil: Date;

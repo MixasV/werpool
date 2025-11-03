@@ -27,8 +27,8 @@ export interface TopShotMomentLockDto {
   readonly momentId: string;
   readonly userAddress: string;
   readonly rarity: TopShotMomentTier;
-  readonly outcomeType: "home" | "away" | "draw" | "cancel" | "unknown";
-  readonly outcomeIndex: number;
+  readonly outcomeType?: "home" | "away" | "draw" | "cancel" | "unknown" | null;
+  readonly outcomeIndex?: number | null;
   readonly playerId?: string;
   readonly playerName?: string;
   readonly teamName?: string;

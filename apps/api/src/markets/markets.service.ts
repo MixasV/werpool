@@ -2117,7 +2117,6 @@ export class MarketsService {
         }
         const lock = await this.topShotLockService.lockMoment({
           marketId: market.id,
-          outcomeIndex: request.outcomeIndex,
           userAddress: topShotAddress,
           momentId: topShotSelection.momentId,
           estimatedReward: topShotSelection.estimatedReward,
@@ -2320,8 +2319,6 @@ export class MarketsService {
       this.topShotLockService.buildProjectedBonus(moment, {
         marketId: marketRecord.id,
         eventId,
-        outcomeType,
-        outcomeIndex,
       })
     );
 
