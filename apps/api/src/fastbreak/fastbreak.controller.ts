@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Param, Req } from '@nestjs/common';
 import { FastBreakChallengeService } from './fastbreak-challenge.service';
 import { FastBreakOracleService } from './fastbreak-oracle.service';
 import { FastBreakScraperService } from './fastbreak-scraper.service';
+import { FastBreakSyncService } from './fastbreak-sync.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('fastbreak')
@@ -10,6 +11,7 @@ export class FastBreakController {
     private readonly challengeService: FastBreakChallengeService,
     private readonly oracle: FastBreakOracleService,
     private readonly scraper: FastBreakScraperService,
+    private readonly syncService: FastBreakSyncService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -78,17 +80,71 @@ export class FastBreakController {
 
   @Get('leaderboard')
   async getLeaderboard() {
-    const currentWeek = this.getCurrentWeekNumber();
-    const currentYear = new Date().getFullYear();
+    // Use sync service for consistent data
+    return this.syncService.getLeaderboard(100);
+  }
 
-    return this.prisma.fastBreakLeaderboard.findMany({
-      where: {
-        week: currentWeek,
-        year: currentYear,
+  /**
+   * AUTOMATED SYNC ENDPOINTS (NEW!)
+   * These replace manual CSV imports
+   */
+
+  @Post('sync/trigger')
+  async triggerSync() {
+    this.syncService.triggerSync();
+    return { 
+      message: 'FastBreak leaderboard sync triggered',
+      note: 'Sync runs in background, check logs for progress'
+    };
+  }
+
+  @Post('sync/verify-rank/:address')
+  async verifyUserRank(@Param('address') address: string) {
+    const result = await this.syncService.verifyUserRank(address);
+    
+    if (!result) {
+      return {
+        verified: false,
+        message: 'Failed to verify rank',
+      };
+    }
+
+    if (!result.verified) {
+      return {
+        verified: false,
+        message: 'User not found in FastBreak leaderboard',
+        note: 'Only top leaders of each group (5 players) are tracked via API',
+      };
+    }
+
+    return {
+      verified: true,
+      rank: result.rank,
+      points: result.points,
+      source: result.source,
+      runId: result.runId,
+      runName: result.runName,
+      message: `User is rank #${result.rank} with ${result.points} points`,
+    };
+  }
+
+  @Get('sync/status')
+  async getSyncStatus() {
+    const leaderboard = await this.syncService.getLeaderboard(10);
+    const totalEntries = leaderboard.length;
+
+    return {
+      status: 'active',
+      syncInterval: 'hourly',
+      lastSync: leaderboard[0]?.updatedAt || null,
+      totalEntries,
+      topLeaders: leaderboard.slice(0, 10),
+      limitations: {
+        apiRestriction: 'TopShot API only provides top leader of each FastBreak group',
+        coverage: 'Only group leaders (rank #1 in their 5-player groups) are automatically tracked',
+        verification: 'Non-leaders can still create challenges but may need manual verification',
       },
-      orderBy: { rank: 'asc' },
-      take: 100,
-    });
+    };
   }
 
   private getCurrentWeekNumber(): number {

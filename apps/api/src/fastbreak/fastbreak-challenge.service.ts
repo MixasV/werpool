@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TopShotUsernameService } from '../topshot/topshot-username.service';
+import { FastBreakSyncService } from './fastbreak-sync.service';
 import { MarketCategory, MarketState } from '@prisma/client';
 
 interface CreateChallengeDto {
@@ -10,6 +11,7 @@ interface CreateChallengeDto {
   stakeAmount: number;
   question: string;
   duration: number;
+  requireTopRank?: number; // Optional: require creator to be in top N
 }
 
 @Injectable()
@@ -19,11 +21,37 @@ export class FastBreakChallengeService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly topShotUsername: TopShotUsernameService,
+    private readonly syncService: FastBreakSyncService,
   ) {}
 
   async createChallenge(dto: CreateChallengeDto, creator: string) {
     try {
       this.logger.log(`Creating challenge for ${creator}`);
+
+      // REAL-TIME VERIFICATION: Check creator's FastBreak rank
+      let creatorRankData = null;
+      
+      if (dto.requireTopRank && dto.requireTopRank > 0) {
+        this.logger.log(`Verifying creator ${creator} is in top ${dto.requireTopRank}...`);
+        
+        creatorRankData = await this.syncService.verifyUserRank(creator);
+
+        if (!creatorRankData || !creatorRankData.verified) {
+          throw new BadRequestException(
+            'You are not in the FastBreak leaderboard. Only group leaders can create challenges with rank requirements.'
+          );
+        }
+
+        if (creatorRankData.rank > dto.requireTopRank) {
+          throw new BadRequestException(
+            `Your rank is ${creatorRankData.rank}, but this challenge requires top ${dto.requireTopRank}.`
+          );
+        }
+
+        this.logger.log(
+          `✅ Creator verified: rank ${creatorRankData.rank} with ${creatorRankData.points} points (source: ${creatorRankData.source})`
+        );
+      }
 
       let opponentAddress: string | null = null;
       
@@ -46,6 +74,16 @@ export class FastBreakChallengeService {
           duration: dto.duration,
           closeAt,
           state: 'PENDING',
+          // Store verification data
+          creatorRank: creatorRankData?.rank || null,
+          proof: creatorRankData ? {
+            verifiedAt: new Date().toISOString(),
+            rank: creatorRankData.rank,
+            points: creatorRankData.points,
+            source: creatorRankData.source,
+            runId: creatorRankData.runId,
+            runName: creatorRankData.runName,
+          } : null,
         },
       });
 
