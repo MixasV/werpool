@@ -375,6 +375,50 @@ export class TopShotLockService {
   }
 
   /**
+   * Calculate maximum projected reward for a moment in a specific market
+   * Returns the highest possible points this card can earn
+   */
+  async calculateMaxProjectedReward(moment: TopShotMomentDetail, market: any): Promise<number> {
+    const cap = this.resolveRarityCap(moment.tier);
+    
+    // Extract teams from market outcomes
+    const teams = market.outcomes
+      .map((outcome: any) => {
+        const metadata = outcome.metadata as Record<string, unknown> | null;
+        if (!metadata) return null;
+        const type = metadata.type;
+        const team = typeof metadata.team === 'string' ? metadata.team : null;
+        return { type, team };
+      })
+      .filter((t: any) => t !== null && t.team);
+
+    // Normalize card team name
+    const cardTeam = moment.teamName?.toLowerCase().replace(/[^a-z0-9]/g, '') ?? '';
+    
+    // Check if card team matches any outcome team
+    let matchesTeam = false;
+    for (const outcome of teams) {
+      const outcomeTeam = outcome.team.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cardTeam && outcomeTeam && cardTeam.includes(outcomeTeam)) {
+        matchesTeam = true;
+        break;
+      }
+    }
+
+    if (matchesTeam) {
+      // Team matches → can get FULL BONUS (up to cap, min 10)
+      // Return cap as maximum possible (perfect performance scenario)
+      return Math.min(cap, 300);
+    } else if (moment.playerId) {
+      // Player card but wrong team → can get PARTICIPATION BONUS (15 pts)
+      return 15;
+    } else {
+      // Generic card → GENERIC BONUS (10 pts)
+      return 10;
+    }
+  }
+
+  /**
    * Estimate generic bonus for any card (avg 30-50% of cap)
    */
   private estimateGenericBonus(moment: TopShotMomentDetail): number {

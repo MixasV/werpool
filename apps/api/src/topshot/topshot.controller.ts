@@ -107,6 +107,36 @@ export class TopShotController {
     return moments;
   }
 
+  @Get('moments/:address/:marketId')
+  async getUserMomentsWithProjectedRewards(
+    @Param('address') address: string,
+    @Param('marketId') marketId: string,
+  ) {
+    const moments = await this.topShotService.getOwnerMoments(address, { limit: 100 });
+    const market = await this.prisma.market.findUnique({
+      where: { id: marketId },
+      include: { outcomes: true },
+    });
+
+    if (!market) {
+      throw new Error(`Market ${marketId} not found`);
+    }
+
+    // Calculate projected rewards for each moment
+    const momentsWithRewards = await Promise.all(
+      moments.map(async (moment) => {
+        const maxReward = await this.lockService.calculateMaxProjectedReward(moment, market);
+        return {
+          ...moment,
+          maxProjectedReward: maxReward,
+        };
+      })
+    );
+
+    // Sort by max projected reward (highest first)
+    return momentsWithRewards.sort((a, b) => b.maxProjectedReward - a.maxProjectedReward);
+  }
+
   @Get('market/:marketId/locks')
   async getMarketLocks(@Param('marketId') marketId: string): Promise<MomentLockResponseDto[]> {
     return this.lockService.getMarketLocks(marketId);
