@@ -88,12 +88,12 @@ export const AppHeader = () => {
             <Link href="/fastbreak/challenges" className="app-header__link">
               FastBreak
             </Link>
-            <Link href="/leaderboard" className="app-header__link">
+            {/* <Link href="/leaderboard" className="app-header__link">
               Leaderboard
             </Link>
             <Link href="/claim" className="app-header__link">
               Claims
-            </Link>
+            </Link> */}
             {isAdmin && (
               <Link href="/markets/create" className="app-header__link">
                 Launch market
