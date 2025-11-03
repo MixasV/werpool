@@ -41,7 +41,6 @@ export default function CreateFastBreakChallenge() {
 
       const challenge = await createFastBreakChallenge({
         ...formData,
-        creator: user.addr,
       });
 
       router.push(`/fastbreak/challenges/${challenge.id}`);

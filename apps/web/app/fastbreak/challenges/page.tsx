@@ -58,7 +58,7 @@ export default async function FastBreakChallengesPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-2xl font-bold text-accent">
-                    {challenge.creatorStake * 2} FLOW
+                    {(challenge.creatorStake || challenge.stake || 0) * 2} FLOW
                   </div>
                   <div className="text-sm text-gray-400">Prize Pool</div>
                 </div>
@@ -68,18 +68,18 @@ export default async function FastBreakChallengesPage() {
                 <div>
                   <div className="text-gray-400 mb-1">Creator</div>
                   <div className="font-semibold">
-                    {challenge.creatorUsername || `${challenge.creator.slice(0, 8)}...`}
+                    {challenge.creatorUsername || challenge.creator?.address?.slice(0, 8) || 'Unknown'}
                   </div>
-                  <div className="text-accent">{challenge.creatorStake} FLOW</div>
+                  <div className="text-accent">{challenge.creatorStake || challenge.stake || 0} FLOW</div>
                 </div>
                 <div>
                   <div className="text-gray-400 mb-1">Opponent</div>
                   {challenge.opponent ? (
                     <>
                       <div className="font-semibold">
-                        {challenge.opponentUsername || `${challenge.opponent.slice(0, 8)}...`}
+                        {challenge.opponentUsername || challenge.opponent?.address?.slice(0, 8) || 'Unknown'}
                       </div>
-                      <div className="text-accent">{challenge.opponentStake} FLOW</div>
+                      <div className="text-accent">{challenge.opponentStake || challenge.stake || 0} FLOW</div>
                     </>
                   ) : (
                     <div className="text-gray-500">Waiting...</div>
@@ -88,8 +88,8 @@ export default async function FastBreakChallengesPage() {
               </div>
 
               <div className="mt-4 pt-4 border-t border-gray-700 flex justify-between text-sm text-gray-400">
-                <span>Closes: {new Date(challenge.closeAt).toLocaleDateString()}</span>
-                <span>{challenge.duration} week{challenge.duration > 1 ? 's' : ''}</span>
+                <span>Closes: {challenge.closeAt ? new Date(challenge.closeAt).toLocaleDateString() : 'TBD'}</span>
+                <span>{challenge.duration || 1} week{(challenge.duration || 1) > 1 ? 's' : ''}</span>
               </div>
             </Link>
           ))}
