@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, Req } from '@nestjs/common';
 import { FastBreakChallengeService } from './fastbreak-challenge.service';
 import { FastBreakOracleService } from './fastbreak-oracle.service';
+import { FastBreakScraperService } from './fastbreak-scraper.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('fastbreak')
@@ -8,6 +9,7 @@ export class FastBreakController {
   constructor(
     private readonly challengeService: FastBreakChallengeService,
     private readonly oracle: FastBreakOracleService,
+    private readonly scraper: FastBreakScraperService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -64,43 +66,29 @@ export class FastBreakController {
     };
   }
 
-  @Post('leaderboard/snapshot')
-  async saveLeaderboardSnapshot(@Body() body: { entries: any[]; week?: number; year?: number }) {
-    // Admin endpoint to manually populate FastBreak leaderboard
-    const week = body.week || this.getCurrentWeekNumber();
-    const year = body.year || new Date().getFullYear();
+  @Post('leaderboard/import')
+  async importLeaderboard(@Body() body: { entries: any[]; week?: number; year?: number }) {
+    return this.scraper.importLeaderboard(body.entries, body.week, body.year);
+  }
 
-    for (const entry of body.entries) {
-      await this.prisma.fastBreakLeaderboard.upsert({
-        where: {
-          week_year_address: {
-            week,
-            year,
-            address: entry.address,
-          },
-        },
-        create: {
-          week,
-          year,
-          address: entry.address,
-          username: entry.username,
-          rank: entry.rank,
-          score: entry.score,
-        },
-        update: {
-          username: entry.username,
-          rank: entry.rank,
-          score: entry.score,
-        },
-      });
-    }
+  @Post('leaderboard/import-csv')
+  async importLeaderboardCSV(@Body() body: { csv: string; week?: number; year?: number }) {
+    return this.scraper.importFromCSV(body.csv, body.week, body.year);
+  }
 
-    return {
-      message: 'Leaderboard snapshot saved',
-      week,
-      year,
-      entries: body.entries.length,
-    };
+  @Get('leaderboard')
+  async getLeaderboard() {
+    const currentWeek = this.getCurrentWeekNumber();
+    const currentYear = new Date().getFullYear();
+
+    return this.prisma.fastBreakLeaderboard.findMany({
+      where: {
+        week: currentWeek,
+        year: currentYear,
+      },
+      orderBy: { rank: 'asc' },
+      take: 100,
+    });
   }
 
   private getCurrentWeekNumber(): number {
