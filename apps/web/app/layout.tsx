@@ -4,7 +4,7 @@ import { Inter } from "next/font/google";
 
 import { FlowWalletProvider } from "./providers/flow-wallet-provider";
 import { AppHeader } from "./components/app-header";
-import { AppSidebar } from "./components/app-sidebar";
+// import { AppSidebar } from "./components/app-sidebar"; // Убрано - занимает много места
 import { AppFooter } from "./components/app-footer";
 import { WalletConflictResolver } from "./components/wallet-conflict-resolver";
 
@@ -52,8 +52,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="app-shell">
             <AppHeader />
             <div className="app-shell__content">
-              <AppSidebar />
-              <main id="main-content" className="app-shell__main">{children}</main>
+              {/* <AppSidebar /> */}
+              <main id="main-content" className="app-shell__main app-shell__main--full">{children}</main>
             </div>
             <AppFooter />
           </div>
