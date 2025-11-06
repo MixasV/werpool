@@ -73,6 +73,7 @@ import {
 import { RoleAssignmentsPanel } from "./role-assignments-panel";
 import { RolePurchaseRequestsPanel } from "./role-purchase-requests-panel";
 import { MarketTransactionLogPanel } from "../components/market-transaction-log-panel";
+import { fetchMyProfile } from "../lib/users-api";
 
 const ADMIN_PATH = "/admin";
 
@@ -181,6 +182,33 @@ export default async function AdminPage() {
       <main className="container">
         <h1>Admin Panel</h1>
         <p>Authorization required. Please sign in with your Flow wallet.</p>
+      </main>
+    );
+  }
+
+  // Check user roles
+  let userProfile;
+  try {
+    userProfile = await fetchMyProfile(auth);
+  } catch (error) {
+    return (
+      <main className="container">
+        <h1>Admin Panel</h1>
+        <p>Failed to load user profile. Please try reconnecting your wallet.</p>
+      </main>
+    );
+  }
+
+  const hasAdminRole = userProfile.roles.some(r => r.role === "admin");
+  const hasOperatorRole = userProfile.roles.some(r => r.role === "operator");
+
+  if (!hasAdminRole && !hasOperatorRole) {
+    return (
+      <main className="container">
+        <h1>Admin Panel</h1>
+        <p>Access denied. You need ADMIN or OPERATOR role to access this panel.</p>
+        <p>Your address: {userProfile.address}</p>
+        <p>Your roles: {userProfile.roles.length > 0 ? userProfile.roles.map(r => r.role).join(", ") : "none"}</p>
       </main>
     );
   }
