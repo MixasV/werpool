@@ -78,6 +78,7 @@ import { fetchMyProfile } from "../lib/users-api";
 const ADMIN_PATH = "/admin";
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const sessionCookieName = process.env.NEXT_PUBLIC_FLOW_SESSION_COOKIE ?? "flow_session";
 
