@@ -180,7 +180,7 @@ export default async function AdminPage() {
     return (
       <main className="container">
         <h1>Admin Panel</h1>
-        <p>Требуется авторизация. Пожалуйста, войдите с помощью Flow кошелька.</p>
+        <p>Authorization required. Please sign in with your Flow wallet.</p>
       </main>
     );
   }
