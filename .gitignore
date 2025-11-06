@@ -71,6 +71,11 @@ ecosystem.config.js
 *.md
 !README.md
 
+# Test scripts and temporary files
+test-*.sh
+test*.txt
+run_pnpm.cmd
+
 # Docker volumes
 postgres_data/
 redis_data/
