@@ -980,13 +980,15 @@ export default async function AdminPage() {
       </header>
 
       <nav className="admin-nav">
-        <a href="#roles" className="admin-nav__link">Roles & Users</a>
-        <a href="#monitoring" className="admin-nav__link">Monitoring</a>
-        <a href="#scheduler" className="admin-nav__link">Scheduler</a>
-        <a href="#points" className="admin-nav__link">Points</a>
-        <a href="#markets" className="admin-nav__link">Markets</a>
-        <a href="#liquidity" className="admin-nav__link">Liquidity</a>
-        <a href="#fastbreak" className="admin-nav__link">FastBreak</a>
+        <div className="admin-nav__inner">
+          <a href="#roles" className="admin-nav__link">👥 Roles & Users</a>
+          <a href="#monitoring" className="admin-nav__link">📊 Monitoring</a>
+          <a href="#scheduler" className="admin-nav__link">⏰ Scheduler</a>
+          <a href="#points" className="admin-nav__link">🏆 Points</a>
+          <a href="#markets" className="admin-nav__link">📈 Markets</a>
+          <a href="#liquidity" className="admin-nav__link">💧 Liquidity</a>
+          <a href="#fastbreak" className="admin-nav__link">🏀 FastBreak</a>
+        </div>
       </nav>
 
       <section id="roles" className="admin-section">
