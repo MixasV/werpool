@@ -94,6 +94,30 @@ export default function Home() {
         </div>
       </section>
 
+      <section className="features">
+        <h2>Premium prediction experiences</h2>
+        <div className="features-grid">
+          <article className="feature-card feature-card--highlight">
+            <h3>⚡ FastBreak Challenges</h3>
+            <p>
+              Challenge friends to NBA TopShot FastBreak competitions. Bet on leaderboard positions, create peer-to-peer markets, and prove your NBA knowledge.
+            </p>
+            <Link className="button secondary" href="/fastbreak/challenges">
+              Explore challenges
+            </Link>
+          </article>
+          <article className="feature-card feature-card--highlight">
+            <h3>🏀 aiSports Meta Markets</h3>
+            <p>
+              Experimental LMSR markets synchronized with the aiSports fantasy platform. Trade on player performance, team outcomes, and fantasy scores.
+            </p>
+            <Link className="button secondary" href="/aisports">
+              View markets
+            </Link>
+          </article>
+        </div>
+      </section>
+
       <section className="cta-banner">
         <div>
           <h2>Ready to stake your insight?</h2>

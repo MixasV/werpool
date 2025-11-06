@@ -599,6 +599,34 @@ a {
   color: rgba(255, 255, 255, 0.7);
 }
 
+.feature-card:hover {
+  border-color: rgba(53, 85, 255, 0.45);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  transform: translateY(-4px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.feature-card--highlight {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(139, 92, 246, 0.12));
+  border-color: rgba(99, 102, 241, 0.35);
+  min-height: 260px;
+}
+
+.feature-card--highlight:hover {
+  border-color: rgba(99, 102, 241, 0.55);
+  box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+}
+
+.feature-card--highlight h3 {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.feature-card .button {
+  margin-top: auto;
+  align-self: flex-start;
+}
+
 .about {
   display: grid;
   gap: 2.5rem;
