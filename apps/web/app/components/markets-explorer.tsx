@@ -179,20 +179,21 @@ export const MarketsExplorer = ({ markets }: MarketsExplorerProps) => {
   const [stateFilter, setStateFilter] = useState<MarketState | "all">("all");
   const [categoryFilter, setCategoryFilter] = useState<MarketCategory | "all">("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  // Tags removed from UI
+  // const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  const availableTags = useMemo(() => {
-    const tagSet = new Set<string>();
-    markets.forEach((market) => {
-      market.tags.forEach((tag) => {
-        const normalized = tag.trim().toLowerCase();
-        if (normalized) {
-          tagSet.add(normalized);
-        }
-      });
-    });
-    return Array.from(tagSet).sort();
-  }, [markets]);
+  // const availableTags = useMemo(() => {
+  //   const tagSet = new Set<string>();
+  //   markets.forEach((market) => {
+  //     market.tags.forEach((tag) => {
+  //       const normalized = tag.trim().toLowerCase();
+  //       if (normalized) {
+  //         tagSet.add(normalized);
+  //       }
+  //     });
+  //   });
+  //   return Array.from(tagSet).sort();
+  // }, [markets]);
 
   const filtered = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -201,37 +202,39 @@ export const MarketsExplorer = ({ markets }: MarketsExplorerProps) => {
       const matchesState = stateFilter === "all" || market.state === stateFilter;
       const matchesCategory = categoryFilter === "all" || market.category === categoryFilter;
 
-      const normalizedTags = market.tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean);
-      const matchesTags =
-        selectedTags.length === 0 || selectedTags.every((tag) => normalizedTags.includes(tag));
+      // Tags filter removed
+      // const normalizedTags = market.tags.map((tag) => tag.trim().toLowerCase()).filter(Boolean);
+      // const matchesTags =
+      //   selectedTags.length === 0 || selectedTags.every((tag) => normalizedTags.includes(tag));
 
       const matchesSearch =
         normalizedSearch.length === 0 ||
         market.title.toLowerCase().includes(normalizedSearch) ||
-        market.slug.toLowerCase().includes(normalizedSearch) ||
-        normalizedTags.some((tag) => tag.includes(normalizedSearch));
+        market.slug.toLowerCase().includes(normalizedSearch);
+        // Tags removed: || normalizedTags.some((tag) => tag.includes(normalizedSearch));
 
-      return matchesState && matchesCategory && matchesTags && matchesSearch;
+      return matchesState && matchesCategory && matchesSearch;
     });
-  }, [markets, stateFilter, categoryFilter, selectedTags, searchTerm]);
+  }, [markets, stateFilter, categoryFilter, searchTerm]);
 
-  const toggleTag = useCallback((tag: string) => {
-    setSelectedTags((prev) =>
-      prev.includes(tag) ? prev.filter((existing) => existing !== tag) : [...prev, tag]
-    );
-  }, []);
+  // Tags toggle removed
+  // const toggleTag = useCallback((tag: string) => {
+  //   setSelectedTags((prev) =>
+  //     prev.includes(tag) ? prev.filter((existing) => existing !== tag) : [...prev, tag]
+  //   );
+  // }, []);
 
   const clearFilters = useCallback(() => {
     setStateFilter("all");
     setCategoryFilter("all");
     setSearchTerm("");
-    setSelectedTags([]);
+    // setSelectedTags([]);
   }, []);
 
   const hasFiltersApplied =
     stateFilter !== "all" ||
     categoryFilter !== "all" ||
-    selectedTags.length > 0 ||
+    // selectedTags.length > 0 ||
     searchTerm.trim().length > 0;
 
   const feedSource = filtered.length > 0 ? filtered : markets;
@@ -293,7 +296,8 @@ export const MarketsExplorer = ({ markets }: MarketsExplorerProps) => {
           )}
         </div>
 
-        {availableTags.length > 0 && (
+        {/* Tags section removed */}
+        {/* {availableTags.length > 0 && (
           <div className="markets-page__tags">
             {availableTags.map((tag) => (
               <button
@@ -307,7 +311,7 @@ export const MarketsExplorer = ({ markets }: MarketsExplorerProps) => {
               </button>
             ))}
           </div>
-        )}
+        )} */}
       </div>
 
       <div className="markets-page__layout">
