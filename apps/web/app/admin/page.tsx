@@ -940,16 +940,27 @@ export default async function AdminPage() {
 
   return (
     <div className="admin-page">
-      <section className="admin-section">
-        <header className="admin-section__header">
-          <div>
-            <p className="eyebrow">Administration</p>
-            <h1>Platform control panel</h1>
-            <p className="muted">
-              Assign participant roles, transition markets between states, and capture operational outcomes.
-            </p>
-          </div>
-        </header>
+      <header className="admin-header">
+        <div className="admin-header__content">
+          <p className="eyebrow">Administration</p>
+          <h1>Platform control panel</h1>
+          <p className="muted">
+            Manage roles, markets, monitoring, and system operations.
+          </p>
+        </div>
+      </header>
+
+      <nav className="admin-nav">
+        <a href="#roles" className="admin-nav__link">Roles & Users</a>
+        <a href="#monitoring" className="admin-nav__link">Monitoring</a>
+        <a href="#scheduler" className="admin-nav__link">Scheduler</a>
+        <a href="#points" className="admin-nav__link">Points</a>
+        <a href="#markets" className="admin-nav__link">Markets</a>
+        <a href="#liquidity" className="admin-nav__link">Liquidity</a>
+        <a href="#fastbreak" className="admin-nav__link">FastBreak</a>
+      </nav>
+
+      <section id="roles" className="admin-section">
 
         <article className="admin-card">
           <header className="admin-card__header">
@@ -1017,14 +1028,16 @@ export default async function AdminPage() {
         </article>
       </section>
 
-      <section id="admin-role-purchases" className="admin-section">
-        <article className="admin-section__content">
-          <h1 className="admin-title">Role Purchase Requests</h1>
+      <section id="role-purchases" className="admin-section">
+        <header className="admin-section__header">
+          <h2>Role Purchase Requests</h2>
+        </header>
+        <article className="admin-card">
           <RolePurchaseRequestsPanel initialRequests={rolePurchaseRequests} />
         </article>
       </section>
 
-      <section className="admin-section">
+      <section id="monitoring" className="admin-section">
         <header className="admin-section__header">
           <div>
             <h2>Monitoring and alerts</h2>
@@ -1136,7 +1149,7 @@ export default async function AdminPage() {
         </article>
       </section>
 
-      <section className="admin-section">
+      <section id="scheduler" className="admin-section">
         <header className="admin-section__header">
           <div>
             <h2>Task scheduler</h2>
@@ -1199,7 +1212,7 @@ export default async function AdminPage() {
         </article>
       </section>
 
-      <section className="admin-section">
+      <section id="points" className="admin-section">
         <header className="admin-section__header">
           <div>
             <h2>Points and leaderboard</h2>
@@ -1337,7 +1350,7 @@ export default async function AdminPage() {
         </article>
       </section>
 
-      <section className="admin-section">
+      <section id="markets" className="admin-section">
         <header className="admin-section__header">
           <div>
             <h2>Markets</h2>
@@ -1757,7 +1770,7 @@ export default async function AdminPage() {
         </div>
       </section>
 
-      <section className="admin-section">
+      <section id="liquidity" className="admin-section">
         <header className="admin-section__header">
           <div>
             <h2>Liquidity and outcome tokens</h2>
@@ -1951,7 +1964,7 @@ export default async function AdminPage() {
         )}
       </section>
 
-      <section className="admin-section">
+      <section id="fastbreak" className="admin-section">
         <header className="admin-section__header">
           <div>
             <h2>FastBreak Prediction Markets</h2>
