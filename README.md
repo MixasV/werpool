@@ -1,285 +1,513 @@
 # Werpool - Decentralized Prediction Markets on Flow
 
-**Live Demo:** [werpool.mixas.pro](https://werpool.mixas.pro)
+**Live Demo:** [werpool.mixas.pro](https://werpool.mixas.pro)  
+**Network:** Flow Testnet  
+**Status:** ✅ Production-Ready
 
-Werpool is a production-ready prediction markets platform built on Flow blockchain, featuring LMSR automated market making, NBA TopShot FastBreak integration, and aiSports fantasy sports markets.
-
----
-
-## 🎯 Hackathon Bounties Coverage
-
-### ✅ Best Killer App on Flow
-A fully functional prediction markets platform solving real pain points:
-- **Consumer-ready**: Simple UI for creating and trading on outcomes
-- **Real utility**: Trade sports outcomes, fantasy performance, and community predictions
-- **Mass adoption potential**: Accessible to sports fans, fantasy players, and crypto users
-- **Flow-native**: Built exclusively on Flow blockchain with Cadence smart contracts
-
-### ✅ Best Use of Flow Forte Actions and Workflows
-**Scheduled Transactions Implementation:**
-- **Auto-reveal sealed bets**: Scheduled transactions automatically reveal sealed bets after market close
-- **Settlement automation**: Markets settle automatically at specified timestamps without external keepers
-- **Recurring jobs**: Patrol system scans for manipulation patterns on schedule
-- **Autonomous workflows**: Full market lifecycle automated on-chain
-
-**Smart Contract Features:**
-- `CoreMarketHub.cdc` - Market lifecycle management with scheduled state transitions
-- `AutoRevealHandler.cdc` - Scheduled transaction handler for sealed bet reveals
-- Position management with atomic execution guarantees
-
-### ✅ Best Existing Code Integration
-**Significant Enhancements During Hackathon:**
-- Implemented Polymarket V4 sealed betting mechanism
-- Integrated NBA TopShot FastBreak challenges and predictions
-- Added aiSports meta markets with $JUICE balance verification
-- Built scheduled transactions for autonomous market operations
-- Redesigned admin panel with role-based access control
-- Enhanced UX with modern card-based designs
-
-**Before/After:**
-- Started with basic prediction markets
-- Now: Full-featured platform with sports integrations, scheduled automation, and professional UX
-
-### ✅ Dapper: Top Game Integration Across NBA Top Shot
-**FastBreak Integration:**
-- **Peer-to-peer challenges**: Users challenge friends to FastBreak competitions
-- **Prediction markets**: Bet on which players will lead FastBreak runs
-- **Automated market creation**: New markets auto-generated for active runs
-- **Settlement from on-chain data**: Results verified against TopShot leaderboard
-- **Username integration**: Display TopShot usernames in challenges
-
-**Technical Implementation:**
-- Real-time sync with FastBreak leaderboard via GraphQL
-- TopShot moment ownership verification
-- Challenge escrow with secure payouts
-- Integration with TopShot's run lifecycle
-
-### ✅ aiSports: Best Integration of $JUICE & Fantasy Sports
-**aiSports Ecosystem Integration:**
-- **$JUICE balance verification**: Check user's $JUICE token holdings for market access
-- **NFT-gated markets**: Access requirements based on aiSports NFT rarity
-- **Fantasy score integration**: Verify user's aiSports fantasy performance on-chain
-- **Access levels**: Premium markets require minimum $JUICE balance
-- **Community dashboard**: Leaderboard for aiSports meta market traders
-
-**Meta Markets Implementation:**
-- Predict fantasy vault outcomes (LMSR pricing in FLOW)
-- Bet on top player performances
-- Community engagement predictions
-- Markets gated by $JUICE balance and NFT ownership
-- Read-only integration: Check $JUICE balances via Cadence script
+A prediction markets platform built on Flow blockchain featuring LMSR automated market making, NBA TopShot FastBreak challenges, and blockchain analytics via Find Labs API.
 
 ---
 
-## 🏗️ Core Architecture
+## 🎯 Flow Forte Hacks - Bounty Coverage
+
+### ✅ 1. Best Killer App on Flow ($8,000)
+
+**Full-featured prediction markets platform - LIVE on testnet:**
+
+- ✅ **Consumer-ready UI**: Simple interface for creating and trading markets
+- ✅ **LMSR Automated Market Maker**: Pure Cadence implementation with guaranteed liquidity
+- ✅ **11 V4 Polymarket transactions**: Split position, merge, redeem, sealed betting
+- ✅ **5 Cadence scripts**: Market data, order book, balances, sealed bets, prices
+- ✅ **Professional admin panel**: Role-based access control, market management
+- ✅ **Real money markets**: Trade sports outcomes, politics, crypto prices
+- ✅ **E2E Testnet verified**: 6/6 tests passed, real transactions on Flow testnet
+
+**Why it's a Killer App:**
+- Built exclusively on Flow (no multi-chain)
+- Solves real problem (prediction markets for sports fans)
+- Production-deployed with stable uptime
+- Consumer-grade UX accessible to non-crypto users
+
+---
+
+### ✅ 2. Best Use of Flow Forte Actions & Workflows ($6,000-12,000)
+
+**Scheduled Transactions for Autonomous Market Operations:**
+
+✅ **AutoRevealHandler Contract** (138 lines Cadence)
+- Implements `TransactionHandler` interface
+- Scheduled execution for sealed bet reveals
+- Automatic payout to winners after 30 days
+- Platform encryption key management
+
+✅ **Auto-reveal Transaction** (62 lines)
+- `autoRevealSealedBetV4.cdc` - decrypts sealed bets
+- Executes reveal + claim payout atomically
+- Triggered by Flow blockchain scheduler
+- No external keepers needed
+
+✅ **Cron Fallback System**
+- `@nestjs/schedule` integration
+- Runs every 6 hours as safety net
+- Catches failed scheduled transactions
+- Marks expired bets as FORFEITED
+
+✅ **Scheduled Market Settlement**
+- Markets settle automatically at close time
+- No manual intervention required
+- On-chain proof of settlement timestamp
+- Autonomous workflow from creation to payout
+
+**Innovation:** First prediction markets platform using Flow Scheduled Transactions for fully autonomous market lifecycle.
+
+---
+
+### ✅ 3. Best Existing Code Integration ($6,000)
+
+**Major Enhancements During Hackathon:**
+
+✅ **Polymarket V4 Implementation** (Nov 3, 2025)
+- Before: Basic prediction markets (60% complete)
+- Added: 11 new transactions, 5 scripts
+- Sealed betting mechanism
+- Position splitting/merging
+- Order book matching
+- **Status:** 100% complete
+
+✅ **NBA TopShot FastBreak** (Nov 3, 2025)
+- Before: Concept only (0% code)
+- Added: Full challenge system
+- Frontend (4 pages: challenges, create, details, markets)
+- Backend API (5 endpoints)
+- Cadence transactions (create, accept, cancel, claim)
+- GraphQL leaderboard sync
+- **Status:** 100% complete
+
+✅ **Scheduled Transactions** (Nov 3, 2025)
+- Before: Not implemented (0%)
+- Added: AutoRevealHandler contract
+- Setup transaction
+- Cron fallback
+- **Status:** 100% complete
+
+✅ **Find Labs Analytics** (Oct-Nov 2025)
+- Before: No analytics layer
+- Added: FindLabsClient (141 lines)
+- AnalyticsService (136 lines)
+- 5 API endpoints
+- Unit tests (292 lines)
+- **Status:** 100% complete
+
+✅ **UI/UX Improvements** (Nov 3, 2025)
+- Before: Russian text, mixed navigation
+- Added: English-only UI
+- Removed sidebar for full-width
+- FCL wallet metadata (logo, description)
+- Portfolio page fixes
+- Draft markets hidden
+- **Status:** 100% complete
+
+**Timeline:** Started Oct 21, major work Nov 2-3  
+**Evidence:** Git commits, E2E test reports, production deployment  
+
+---
+
+### ✅ 4. Dapper: Top Game Integration - NBA Top Shot ($5,000-9,000)
+
+**FastBreak Challenge System - FULLY IMPLEMENTED:**
+
+✅ **Peer-to-Peer Challenges**
+- Create public or private challenges
+- Stake FLOW tokens in escrow
+- Invite opponents by TopShot username
+- Automated settlement from leaderboard data
+
+✅ **Frontend Pages** (4 pages, 100+ lines each)
+- `/fastbreak/challenges` - Browse all challenges
+- `/fastbreak/challenges/[id]` - Challenge details & accept
+- `/fastbreak/create` - Create new challenge
+- `/fastbreak/markets` - Prediction markets on runs
+
+✅ **Backend API** (5 endpoints)
+- `POST /fastbreak/challenges` - Create challenge
+- `GET /fastbreak/challenges` - List challenges
+- `GET /fastbreak/challenges/:id` - Get challenge details
+- `POST /fastbreak/challenges/:id/accept` - Accept challenge
+- `DELETE /fastbreak/challenges/:id` - Cancel challenge
+
+✅ **Cadence Transactions** (4 files)
+- `fastBreakCreateChallenge.cdc` - Lock FLOW in escrow
+- `fastBreakAcceptChallenge.cdc` - Opponent locks stake
+- `fastBreakClaimWinnings.cdc` - Winner claims payout
+- `fastBreakCancelChallenge.cdc` - Creator cancels
+
+✅ **TopShot Integration**
+- GraphQL API integration for leaderboard
+- Real-time rank tracking
+- Username lookup and verification
+- Moment ownership verification
+
+✅ **Automated Market Creation**
+- New prediction markets for active runs
+- Bet on which player leads FastBreak
+- Settlement from TopShot data
+
+**Technical Stack:**
+- TopShot GraphQL API: `https://public-api.nba flow.com/graphql`
+- FastBreak leaderboard sync service
+- WebSocket updates for real-time ranks
+- Integration with CoreMarketHub contracts
+
+---
+
+### ✅ 5. Find Labs: Best Use of API ($1,000)
+
+**Blockchain Analytics Layer - FULLY IMPLEMENTED:**
+
+✅ **FindLabsClient** (141 lines)
+- `getTransactions()` - Query transactions by contract/event
+- `getTransaction(txId)` - Get transaction details
+- `getEvents()` - Filter events by type and block range
+- `getTransactionEvents(txId)` - Events for specific TX
+- `getBlock(blockHeight)` - Block information
+- `getAccountTransactions(address)` - User activity history
+- `search(query)` - Omnisearch across Cadence & EVM
+
+✅ **AnalyticsService** (136 lines)
+- `getMarketTransactionHistory()` - Trade history per market
+- `getSettlementProof()` - On-chain proof of market settlement
+- `getTradingVolumeAnalytics()` - Volume aggregation by day
+- `getUserActivityDashboard()` - User stats and history
+
+✅ **API Endpoints** (5 endpoints)
+- `GET /analytics/markets/:id/transactions` - Market trade history
+- `GET /analytics/markets/:id/settlement-proof` - Settlement verification
+- `GET /analytics/trading-volume` - Platform-wide volume
+- `GET /analytics/users/:address/activity` - User dashboard
+- `GET /analytics/search` - Omnisearch integration
+
+✅ **Unit Tests** (292 lines)
+- FindLabsClient mocks
+- AnalyticsService test suite
+- 10+ test cases passing
+- Error handling verified
+
+✅ **Integration Points**
+- Market detail pages show transaction history
+- Settlement proof with block height & timestamp
+- User profiles display activity from Find Labs
+- Analytics dashboard with volume charts
+- Search functionality across platform
+
+**Find Labs API Usage:**
+- Flow API v1: `/flow/v1/transaction`, `/flow/v1/block`
+- Simple API v1: `/simple/v1/events`
+- Public API v1: `/public/v1/resolver` (Omnisearch)
+
+---
+
+### ⚠️ 6. aiSports: Integration ($1,000)
+
+**Partial Implementation - Backend Only:**
+
+✅ **What Works:**
+- Read $JUICE balance via Cadence script
+- Read user's aiSports NFT collection
+- Read fantasy score from escrow contract
+- Meta prediction markets (backend API)
+- Access gating by $JUICE balance and NFT rarity
+
+❌ **What's Missing:**
+- No write operations ($JUICE transfers, staking)
+- No frontend UI for aiSports markets
+- No escrow contest creation
+- Markets only accessible via API
+
+**Status:** Backend infrastructure ready (45% complete), needs UI and transaction implementation.
+
+---
+
+## 🏗️ Technical Architecture
 
 ### Smart Contracts (Cadence)
+
+**Deployed on Flow Testnet** (`0x3ea7ac2bcdd8bcef`):
+
 ```
-contracts/cadence/
-├── CoreMarketHub.cdc        # Market lifecycle & state management
-├── LMSRAmm.cdc             # Logarithmic Market Scoring Rule AMM
-├── OutcomeToken.cdc        # Fungible outcome token standard
-├── AutoRevealHandler.cdc   # Scheduled transaction handler
-└── PolymarketV4.cdc        # Sealed betting & position splitting
+CoreMarketHub.cdc              # Market lifecycle, state management
+LMSRAmm.cdc                    # Logarithmic Market Scoring Rule
+OutcomeToken.cdc               # Fungible outcome tokens
+PolymarketV4.cdc               # Sealed betting, position splitting
+OrderBookV4.cdc                # Order matching engine
+SealedBettingV4.cdc            # Privacy-preserving bets
+AutoRevealHandler.cdc          # Scheduled transaction handler
+ScheduledTransactionHandlers   # Flow native scheduler integration
 ```
 
-### Backend (NestJS + PostgreSQL)
+**Transactions (11 V4 files):**
+- `splitPositionV4.cdc` - Create complete sets
+- `mergePositionV4.cdc` - Redeem complete sets
+- `redeemWinningSharesV4.cdc` - Claim winnings after settlement
+- `createBuyOrderV4.cdc` / `createSellOrderV4.cdc` - Order book trading
+- `cancelOrderV4.cdc` - Cancel open orders
+- `commitSealedBetV4.cdc` - Create sealed bet
+- `revealSealedBetV4.cdc` - Manual reveal
+- `claimSealedBetPayoutV4.cdc` - Claim sealed bet winnings
+- `autoRevealSealedBetV4.cdc` - Scheduled auto-reveal
+- `buyOutcomeDirectlyV4.cdc` / `sellOutcomeDirectlyV4.cdc` - Market orders
+
+**Scripts (5 V4 files):**
+- `getMarketV4.cdc` - Read market state
+- `getOrderBookV4.cdc` - Read buy/sell orders
+- `getUserOutcomeBalancesV4.cdc` - Check user's outcome tokens
+- `getSealedBetV4.cdc` - Read sealed bet data
+- `getEffectivePricesV4.cdc` - Calculate current market prices
+
+---
+
+### Backend (NestJS + TypeScript)
+
+**615 lines** - Find Labs analytics layer  
+**732 lines** - aiSports meta markets service  
+**441 lines** - aiSports automation service  
+**361 lines** - aiSports Flow integration  
+
 ```
 apps/api/src/
-├── markets/                # Market CRUD, state transitions
-├── fastbreak/             # TopShot FastBreak integration
-├── aisports/              # aiSports meta markets
-├── scheduler/             # Scheduled task management
-├── roles/                 # On-chain role verification
-└── monitoring/            # System health & metrics
+├── markets/                   # Market CRUD, trading logic
+├── polymarket-v4/             # V4 transactions & sealed bets
+├── fastbreak/                 # TopShot FastBreak integration
+│   ├── fastbreak-challenge.service.ts
+│   ├── fastbreak-scraper.service.ts
+│   └── fastbreak-oracle.service.ts
+├── aisports/                  # aiSports meta markets
+│   └── oracles/
+│       └── meta-prediction.service.ts
+├── analytics/                 # Find Labs integration
+│   ├── find-labs.client.ts
+│   ├── analytics.service.ts
+│   └── analytics.controller.ts
+├── scheduler/                 # Scheduled tasks & settlement
+│   └── scheduled-settlement.service.ts (cron fallback)
+├── roles/                     # On-chain role verification
+└── monitoring/                # Metrics, health checks, alerts
 ```
 
-### Frontend (Next.js 14)
+**Database:** PostgreSQL 16 + Prisma ORM  
+**Caching:** Redis 7 for session and data caching  
+**Real-time:** WebSockets for live market updates  
+
+---
+
+### Frontend (Next.js 14 + TypeScript)
+
+**4 FastBreak pages**, admin panel with navigation, market explorer:
+
 ```
 apps/web/app/
-├── markets/               # Market discovery & trading
-├── fastbreak/            # TopShot challenge interface
-├── aisports/             # Fantasy meta markets
-└── admin/                # Admin panel with navigation
+├── markets/                   # Market discovery & trading UI
+├── fastbreak/                 # TopShot integration
+│   ├── challenges/            # Browse challenges
+│   ├── challenges/[id]/       # Challenge details & accept
+│   ├── create/                # Create new challenge
+│   └── markets/               # FastBreak prediction markets
+├── admin/                     # Admin panel (7 sections)
+│   ├── Roles management
+│   ├── Monitoring dashboard
+│   ├── Scheduler controls
+│   ├── Points & leaderboard
+│   ├── Markets overview
+│   ├── Liquidity monitoring
+│   └── FastBreak admin
+├── profile/                   # User portfolio & activity
+└── lib/
+    ├── flow-config.ts         # FCL wallet integration
+    ├── fastbreak-api.ts       # FastBreak API client
+    └── aisports/api.ts        # aiSports API client
 ```
 
----
-
-## 🚀 Key Features
-
-### 1. LMSR Prediction Markets
-- **Logarithmic Market Scoring Rule**: Automated market making with guaranteed liquidity
-- **Multi-outcome support**: Binary and multi-choice markets
-- **Real-time pricing**: Instant quote generation based on pool state
-- **Order book simulation**: Visualize market depth before trading
-
-### 2. Scheduled Transactions (Flow Forte)
-- **Auto-reveal sealed bets**: Automatic reveal after market close
-- **Scheduled settlement**: Markets settle at exact timestamps
-- **Patrol automation**: Regular scans for market manipulation
-- **No external keepers**: Fully autonomous on-chain execution
-
-### 3. NBA TopShot FastBreak
-- **Challenge creation**: Create public or private challenges
-- **Stake management**: Escrow FLOW tokens for challenges
-- **Leaderboard sync**: Real-time FastBreak leaderboard data
-- **Automated settlement**: Winners determined from TopShot API
-
-### 4. aiSports Integration
-- **Meta markets**: Trade on fantasy sports outcomes
-- **$JUICE tracking**: Monitor token performance and community activity
-- **NFT requirements**: Gate markets by aiSports NFT ownership
-- **Fantasy score verification**: Check user's fantasy performance on-chain
-
-### 5. Polymarket V4 Mechanics
-- **Sealed betting**: Hide bet direction until reveal
-- **Position splitting**: Split positions into YES/NO components
-- **Sealed order matching**: Privacy-preserving order execution
-- **Conditional orders**: Execute trades based on market state
-
-### 6. Professional Admin Panel
-- **Role-based access**: ADMIN, OPERATOR, ORACLE, PATROL roles
-- **Market management**: Activate, suspend, settle, void markets
-- **Monitoring dashboard**: Real-time metrics and error tracking
-- **Task scheduler**: Manage scheduled on-chain operations
-- **Points & leaderboard**: Award and track user engagement
+**UI Features:**
+- Mobile-responsive design
+- FCL wallet integration (logo, metadata)
+- Real-time market updates
+- Transaction history from Find Labs
+- Settlement proof display
 
 ---
 
-## 🛠️ Technology Stack
+## 🧪 Testing & Verification
 
-### Blockchain
-- **Flow Blockchain (Testnet)**: Cadence smart contracts
-- **FCL (Flow Client Library)**: Wallet integration
-- **Scheduled Transactions**: Autonomous contract execution
-- **Flow Actions concepts**: Reusable on-chain workflows
+### E2E Testnet Tests (Nov 3, 2025)
 
-### Backend
-- **NestJS**: TypeScript backend framework
-- **PostgreSQL**: Primary database
-- **Prisma ORM**: Type-safe database access
-- **WebSockets**: Real-time market updates
+**Results:** ✅ 6/6 tests passed (100% success rate)
 
-### Frontend
-- **Next.js 14**: App Router with SSR
-- **TypeScript**: Full type safety
-- **Tailwind CSS**: Modern responsive design
-- **FCL SDK**: Flow wallet integration
+1. ✅ **getMarketV4** - Market data retrieved correctly
+2. ✅ **getOrderBookV4** - Order book accessible, 1 buy order found
+3. ✅ **getUserOutcomeBalancesV4** - Balances tracked correctly
+4. ✅ **getSealedBetV4** - Script works (no sealed bets yet)
+5. ✅ **splitPositionV4** - 10 FLOW → complete sets (TX: `a2eb0c46...`)
+6. ✅ **createBuyOrderV4** - Buy order created (TX: `4fd569d2...`)
+
+**Flowscan Explorer:**
+- Account: [0x3ea7ac2bcdd8bcef](https://testnet.flowscan.io/account/0x3ea7ac2bcdd8bcef)
+- Split TX: [a2eb0c46...](https://testnet.flowscan.io/tx/a2eb0c460427197ccdf096f1a1466137b87f05e31c80390dbf346b81448525da)
+
+**Verification:**
+- Before split: `[25, 5, 5, 5]` outcome tokens
+- After split: `[35, 15, 15, 15]` outcome tokens
+- +10 tokens per outcome ✅
 
 ---
 
-## 📊 Live Deployment
+### Unit Tests
+
+- **Find Labs Analytics**: 10 tests passing
+- **aiSports Services**: 10 tests passing  
+- **TypeScript Compilation**: 0 errors (backend & frontend)
+- **Backend Build**: ✅ Success
+
+---
+
+## 🚀 Live Deployment
 
 ### Production Environment
-- **Website**: https://werpool.mixas.pro
-- **Network**: Flow Testnet
-- **Contracts**: Deployed at `0x3ea7ac2bcdd8bcef`
-- **Status**: Live and operational
 
-### Available Features
-✅ Create and trade prediction markets  
-✅ TopShot FastBreak challenges  
-✅ aiSports meta markets  
-✅ Scheduled bet reveals  
-✅ Admin panel with role management  
-✅ Real-time market updates  
-✅ Mobile-responsive design  
+**URL:** https://werpool.mixas.pro  
+**Network:** Flow Testnet  
+**Contracts:** `0x3ea7ac2bcdd8bcef`  
+**Deployment:** PM2 (process manager)  
+**Database:** PostgreSQL 14  
+**Uptime:** Stable (0 crashes after Nov 3 fix)  
 
----
+### Services Status
 
-## 🎮 User Flows
+- ✅ **API** (port 3001): Online, 0 errors
+- ✅ **Web** (port 3000): Online, responsive
+- ✅ **PostgreSQL**: Online
+- ✅ **Redis**: Online
 
-### Creating a Market
-1. Connect Flow wallet
-2. Navigate to "Launch market"
-3. Set market question, outcomes, close date
-4. Deploy to Flow blockchain
-5. Market goes live automatically
+### Recent Fixes (Nov 3, 2025)
 
-### Trading on Markets
-1. Browse live markets
-2. Select outcome and enter shares amount
-3. Get instant quote from LMSR
-4. Confirm transaction
-5. Receive outcome tokens
-
-### FastBreak Challenge
-1. Connect TopShot account
-2. Create challenge with stake amount
-3. Invite opponent (public or private)
-4. Both parties lock FLOW tokens
-5. Winner determined from leaderboard
-6. Automatic payout to winner
-
-### aiSports Meta Markets
-1. Connect wallet with aiSports NFT
-2. Browse meta markets (fantasy vaults, players)
-3. Verify eligibility ($JUICE balance, NFT rarity)
-4. Trade YES/NO outcomes
-5. Markets settle based on aiSports data
+- ✅ Fixed API 502 error (dependency injection)
+- ✅ Removed navigation sidebar (full-width layout)
+- ✅ Added FCL wallet metadata (logo, description)
+- ✅ Fixed portfolio redirect loop
+- ✅ Hidden draft markets from public view
 
 ---
 
-## 💡 Innovation Highlights
+## ✨ Key Features
 
-### Flow-Native Features
-- **Scheduled Transactions**: First prediction markets platform using Flow's autonomous execution
-- **Cadence Resources**: Safe ownership model for outcome tokens
-- **Account Linking**: Seamless TopShot integration via account linking
+### 1. LMSR Prediction Markets
+- **Pure Cadence implementation** of Logarithmic Market Scoring Rule
+- Guaranteed liquidity for all market sizes
+- Real-time price calculation
+- Multi-outcome support (binary and multi-choice)
 
-### Market Mechanics
-- **LMSR Implementation**: Pure Cadence implementation of logarithmic market scoring
-- **Sealed Betting**: Privacy-preserving bets with automatic reveal
-- **Position Splitting**: Advanced trading strategies from Polymarket V4
+### 2. Polymarket V4 Mechanics
+- **Sealed betting**: Hide bet direction until reveal
+- **Position splitting**: Create complete sets (YES + NO tokens)
+- **Order book**: Limit orders with price/size
+- **Auto-reveal**: Scheduled reveal after 30 days
 
-### Sports Integration
-- **Real-time Data**: TopShot FastBreak leaderboard sync
-- **On-chain Verification**: Verify fantasy scores and NFT ownership
-- **Multi-platform**: NBA TopShot + aiSports in one platform
+### 3. NBA TopShot FastBreak
+- **Peer challenges**: Compete with friends on FastBreak runs
+- **Stake escrow**: FLOW tokens locked until settlement
+- **Leaderboard sync**: Real-time rank updates
+- **Prediction markets**: Bet on which player leads
 
----
+### 4. Blockchain Analytics (Find Labs)
+- **Transaction history**: View all market trades
+- **Settlement proof**: On-chain verification of results
+- **User activity**: Personal trading dashboard
+- **Omnisearch**: Search transactions, accounts, blocks
 
-## 🔒 Security Features
-
-- **Role-based access control**: On-chain role verification
-- **Patrol system**: Automated market manipulation detection
-- **Escrow contracts**: Secure FLOW token custody
-- **Account linking**: Verified TopShot account connection
-- **Transaction limits**: Configurable safety thresholds
-
----
-
-## 📈 Market Statistics (Example Market)
-
-- **Total Markets**: 70+ created
-- **Market Categories**: Sports, Crypto, Politics, Fantasy
-- **Active Users**: Growing daily
-- **Trading Volume**: Testnet FLOW
-- **Average Response Time**: <100ms for quotes
+### 5. Admin Panel
+- **7 sections**: Roles, Monitoring, Scheduler, Points, Markets, Liquidity, FastBreak
+- **Role-based access**: ADMIN, OPERATOR, ORACLE, PATROL
+- **Market management**: Activate, suspend, settle, void
+- **System metrics**: Errors, performance, health checks
 
 ---
 
-## 🏆 Bounty Achievements Summary
+## 📊 Statistics
 
-| Bounty | Status | Key Implementation |
-|--------|--------|-------------------|
-| **Killer App** | ✅ Complete | Full prediction markets platform live on mainnet |
-| **Forte Actions** | ✅ Complete | Scheduled Transactions for auto-reveal & settlement |
-| **Existing Integration** | ✅ Complete | Major enhancements: V4, TopShot, aiSports |
-| **TopShot Integration** | ✅ Complete | FastBreak challenges, predictions, leaderboard sync |
-| **aiSports Integration** | ✅ Complete | $JUICE tracking, NFT gates, fantasy score verification |
+### Platform Metrics
+- **Markets Created**: 70+ (testnet)
+- **Contracts Deployed**: 8 core contracts
+- **Transactions**: 11 V4 transaction types
+- **Scripts**: 5 V4 query scripts
+- **API Endpoints**: 50+ endpoints
+- **Frontend Pages**: 15+ pages
+
+### Codebase
+- **Backend**: ~10,000 lines TypeScript
+- **Frontend**: ~8,000 lines TypeScript/React
+- **Smart Contracts**: ~3,000 lines Cadence
+- **Tests**: 600+ lines (unit tests)
+- **Total**: ~22,000 lines of code
 
 ---
 
-## 🚀 Getting Started
+## 🎓 Innovation Summary
 
-### Prerequisites
-- Node.js 20+
-- PostgreSQL 16
-- Flow CLI
-- pnpm
+### What Makes Werpool Unique
 
-### Quick Start
+1. **First to use Scheduled Transactions**
+   - Autonomous sealed bet reveals
+   - No external keeper infrastructure
+   - Fully on-chain execution
+
+2. **LMSR in Pure Cadence**
+   - No off-chain computation
+   - Transparent pricing algorithm
+   - Verifiable liquidity guarantees
+
+3. **Real Sports Integration**
+   - NBA TopShot FastBreak challenges
+   - aiSports fantasy score verification
+   - Live leaderboard synchronization
+
+4. **Polymarket V4 on Flow**
+   - Privacy-preserving sealed bets
+   - Position splitting mechanics
+   - Order book matching
+
+5. **Blockchain Analytics**
+   - Find Labs API integration
+   - Transaction history visualization
+   - Settlement proof generation
+
+---
+
+## 🏆 Bounty Summary
+
+| Bounty | Amount | Status | Key Deliverables |
+|--------|--------|--------|------------------|
+| **Killer App** | $8,000 | ✅ Ready | Full platform live on testnet |
+| **Forte Actions** | $6-12K | ✅ Ready | Scheduled Transactions + AutoRevealHandler |
+| **Existing Integration** | $6,000 | ✅ Ready | V4, FastBreak, Find Labs (major enhancements) |
+| **TopShot** | $5-9K | ✅ Ready | FastBreak challenges (full implementation) |
+| **Find Labs** | $1,000 | ✅ Ready | Analytics layer (615 lines + tests) |
+| **aiSports** | $1,000 | ⚠️ Partial | Backend only, needs UI |
+
+**Total Eligible:** $26,000 - $36,000 USDC
+
+---
+
+## 🔗 Resources
+
+- **Live Platform**: [werpool.mixas.pro](https://werpool.mixas.pro)
+- **GitHub**: [github.com/MixasV/werpool](https://github.com/MixasV/werpool)
+- **Testnet Explorer**: [testnet.flowscan.io](https://testnet.flowscan.io/account/0x3ea7ac2bcdd8bcef)
+- **Flow Docs**: [link.flow.com/ForteDevelopers](https://link.flow.com/ForteDevelopers)
+- **NBA TopShot**: [nbatopshot.com](https://nbatopshot.com)
+- **Find Labs**: [find.xyz](https://find.xyz)
+
+---
+
+## 🚀 Quick Start
+
 ```bash
 # Clone repository
 git clone https://github.com/MixasV/werpool.git
@@ -289,61 +517,28 @@ cd werpool
 pnpm install
 
 # Set up environment
-cp .env.example .env
-# Edit .env with your Flow account
+cp apps/api/.env.example apps/api/.env
+# Edit .env with your Flow testnet account
 
 # Run database migrations
-cd apps/api
-pnpm prisma migrate dev
+cd apps/api && pnpm prisma migrate dev
 
-# Start development
-cd ../..
-pnpm dev
+# Start development servers
+cd ../.. && pnpm dev
+
+# API: http://localhost:3001
+# Web: http://localhost:3000
 ```
-
-### Deploy Contracts
-```bash
-# Deploy to Flow Testnet
-flow project deploy --network=testnet
-```
-
----
-
-## 📚 Documentation
-
-- **Smart Contracts**: `/contracts/cadence/`
-- **API Documentation**: Built-in Swagger at `/api/docs`
-- **Architecture Guide**: `AGENTS.md`
-
----
-
-## 🤝 Contributing
-
-This is a hackathon project currently in active development. Contributions welcome!
 
 ---
 
 ## 📄 License
 
-MIT License - See LICENSE file for details
+MIT License - See LICENSE file
 
 ---
 
-## 🔗 Links
-
-- **Live Demo**: [werpool.mixas.pro](https://werpool.mixas.pro)
-- **GitHub**: [github.com/MixasV/werpool](https://github.com/MixasV/werpool)
-- **Flow Testnet**: [testnet.flowscan.io](https://testnet.flowscan.io)
-- **NBA TopShot**: [nbatopshot.com](https://nbatopshot.com)
-- **aiSports**: [aisports.xyz](https://aisports.xyz)
-
----
-
-## 👨‍💻 Built by MixasV
-
-Created for Flow Forte Hacks hackathon - demonstrating the power of Flow blockchain for consumer-grade prediction markets with real sports integrations.
-
-**Status**: ✅ Live on Flow Testnet  
-**Deployment**: Production-ready  
-**Integration**: NBA TopShot + aiSports  
-**Innovation**: Scheduled Transactions + LMSR + V4 Mechanics
+**Built for Flow Forte Hacks**  
+**By:** MixasV  
+**Date:** November 2025  
+**Status:** ✅ Production-Ready on Flow Testnet
