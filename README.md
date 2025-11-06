@@ -31,7 +31,7 @@ A fully functional prediction markets platform solving real pain points:
 **Significant Enhancements During Hackathon:**
 - Implemented Polymarket V4 sealed betting mechanism
 - Integrated NBA TopShot FastBreak challenges and predictions
-- Added aiSports meta markets with $JUICE token integration
+- Added aiSports meta markets with $JUICE balance verification
 - Built scheduled transactions for autonomous market operations
 - Redesigned admin panel with role-based access control
 - Enhanced UX with modern card-based designs
@@ -55,18 +55,19 @@ A fully functional prediction markets platform solving real pain points:
 - Integration with TopShot's run lifecycle
 
 ### ✅ aiSports: Best Integration of $JUICE & Fantasy Sports
-**Full aiSports Ecosystem Integration:**
-- **$JUICE token integration**: Meta markets priced in Flow, tied to $JUICE performance
+**aiSports Ecosystem Integration:**
+- **$JUICE balance verification**: Check user's $JUICE token holdings for market access
 - **NFT-gated markets**: Access requirements based on aiSports NFT rarity
-- **Fantasy score integration**: Verify user's aiSports fantasy performance
-- **Escrow contract usage**: Secure contest payouts through aiSports escrow
+- **Fantasy score integration**: Verify user's aiSports fantasy performance on-chain
+- **Access levels**: Premium markets require minimum $JUICE balance
 - **Community dashboard**: Leaderboard for aiSports meta market traders
 
-**Meta Markets:**
-- Predict fantasy vault outcomes
+**Meta Markets Implementation:**
+- Predict fantasy vault outcomes (LMSR pricing in FLOW)
 - Bet on top player performances
 - Community engagement predictions
-- NFT collection floor price movements
+- Markets gated by $JUICE balance and NFT ownership
+- Read-only integration: Check $JUICE balances via Cadence script
 
 ---
 
