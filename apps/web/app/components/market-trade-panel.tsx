@@ -901,7 +901,7 @@ export const MarketTradePanel = ({
 
             {/* Amount Input with Preset Buttons */}
             <div className="amount-input-group">
-              <label className="field-label">Amount (FLOW)</label>
+              <label className="field-label">Amount (SHARES)</label>
               <div className="amount-presets">
                 <button
                   type="button"
@@ -1124,7 +1124,7 @@ export const MarketTradePanel = ({
 
           <section className="market-trade__orderbook">
             <header className="market-trade__orderbook-header">
-              <h3>Simulated order book</h3>
+              <h3>Order book</h3>
               {orderbook.currentPrice !== null && (
                 <span className="market-trade__orderbook-price">
                   Current price: {formatPercentValue(orderbook.currentPrice)}

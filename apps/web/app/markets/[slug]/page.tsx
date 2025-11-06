@@ -245,28 +245,35 @@ export default async function MarketDetailPage({ params }: MarketPageParams) {
         </header>
         <MarketDetailPanel market={market} />
 
-        <MarketChartsPanel
-          marketId={marketId}
-          outcomes={market.outcomes.map((o) => ({
-            label: o.label,
-            index: o.index ?? 0,
-          }))}
-          analyticsData={analyticsData}
-        />
+        {/* New Layout: Charts and Trading side by side */}
+        <div className="market-page__main-grid">
+          <div className="market-page__charts-column">
+            <MarketChartsPanel
+              marketId={marketId}
+              outcomes={market.outcomes.map((o) => ({
+                label: o.label,
+                index: o.index ?? 0,
+              }))}
+              analyticsData={analyticsData}
+            />
+          </div>
+          <div className="market-page__trading-column">
+            <MarketTradePanelWrapper
+              market={market}
+              outcomes={market.outcomes}
+              onQuote={quoteTradeAction}
+              onExecute={executeTradeAction}
+              fetchBalances={fetchBalancesAction}
+              initialPoolState={poolState}
+              refreshPool={refreshPoolState}
+              marketSlug={market.slug}
+              marketId={marketId}
+              initialTrades={trades}
+              tradesLimit={tradesLimit}
+            />
+          </div>
+        </div>
 
-        <MarketTradePanelWrapper
-          market={market}
-          outcomes={market.outcomes}
-          onQuote={quoteTradeAction}
-          onExecute={executeTradeAction}
-          fetchBalances={fetchBalancesAction}
-          initialPoolState={poolState}
-          refreshPool={refreshPoolState}
-          marketSlug={market.slug}
-          marketId={marketId}
-          initialTrades={trades}
-          tradesLimit={tradesLimit}
-        />
         <MarketTransactionLogPanel
           marketId={marketId}
           marketSlug={market.slug}
@@ -274,18 +281,10 @@ export default async function MarketDetailPage({ params }: MarketPageParams) {
           limit={transactionLimit}
         />
         
-        {/* RBAC: Only admin/operator can manage liquidity */}
+        {/* RBAC: Only admin/operator - Liquidity panel removed */}
         {canEdit && (
           <>
-            <MarketLiquidityPanel
-              marketSlug={market.slug}
-              outcomes={market.outcomes}
-              initialState={poolState}
-              refreshPool={refreshPoolState}
-              onCreatePool={createPoolAction}
-              onMint={mintLiquidityAction}
-              onBurn={burnLiquidityAction}
-            />
+            {/* <MarketLiquidityPanel removed - no liquidity concept */}
             <MarketPoolPanel
               marketSlug={market.slug}
               initialState={poolState}

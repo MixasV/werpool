@@ -144,43 +144,43 @@ export const MarketTransactionLogPanel = ({
       {groupedTransactions.length === 0 ? (
         <p className="muted">No transactions recorded yet.</p>
       ) : (
-        <ul className="transaction-log">
+        <div className="transaction-log-list">
           {groupedTransactions.map((entry) => {
             const status = statusLabels[entry.status] ?? entry.status;
             const type = typeLabels[entry.type] ?? entry.type;
             const statusClass = `status status--${entry.status.toLowerCase()}`;
 
             return (
-              <li key={`${entry.id}:${entry.transactionId}`} className="transaction-log__item">
-                <div className="transaction-log__meta">
+              <div key={`${entry.id}:${entry.transactionId}`} className="transaction-log-item">
+                <div className="transaction-log-item__header">
                   <span className={statusClass}>{status}</span>
-                  <time>{formatDateTime(entry.createdAt)}</time>
+                  <span className="transaction-log-item__type">{type}</span>
+                  <time className="transaction-log-item__time">{formatDateTime(entry.createdAt)}</time>
                 </div>
-                <h3>{type}</h3>
-                <dl className="transaction-log__details">
-                  <div>
-                    <dt>Tx</dt>
-                    <dd>{entry.transactionId}</dd>
+                <div className="transaction-log-item__details">
+                  <div className="transaction-log-detail">
+                    <span className="label">Tx ID</span>
+                    <span className="value">{entry.transactionId.slice(0, 16)}...</span>
                   </div>
-                  <div>
-                    <dt>Network</dt>
-                    <dd>{entry.network}</dd>
+                  <div className="transaction-log-detail">
+                    <span className="label">Signer</span>
+                    <span className="value">{entry.signer.slice(0, 10)}...{entry.signer.slice(-4)}</span>
                   </div>
-                  <div>
-                    <dt>Signer</dt>
-                    <dd>{entry.signer}</dd>
+                  <div className="transaction-log-detail">
+                    <span className="label">Network</span>
+                    <span className="value">{entry.network}</span>
                   </div>
-                </dl>
+                </div>
                 {entry.payload ? (
-                  <details className="transaction-log__payload">
-                    <summary>Payload</summary>
+                  <details className="transaction-log-item__payload">
+                    <summary>View payload</summary>
                     <pre>{JSON.stringify(entry.payload, null, 2)}</pre>
                   </details>
                 ) : null}
-              </li>
+              </div>
             );
           })}
-        </ul>
+        </div>
       )}
     </section>
   );

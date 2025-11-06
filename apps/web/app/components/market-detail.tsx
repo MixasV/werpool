@@ -25,63 +25,33 @@ const stateLabel: Record<MarketDetail["state"], string> = {
 const percentage = (value: number): string => `${Math.round(value * 100)}%`;
 
 export const MarketDetailPanel = ({ market }: { market: MarketDetail }) => {
+  const formatVolume = (value: number): string => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+    return value.toLocaleString("en-US");
+  };
+
   return (
     <article className="market-detail">
       <header>
         <span className="market-detail__state">{stateLabel[market.state]}</span>
         <h1>{market.title}</h1>
-        <div className="market-detail__meta">
-          <span className="category">Category: {market.category.toUpperCase()}</span>
-          {market.tags.length > 0 && (
-            <span className="tags">Tags: {market.tags.join(", ")}</span>
-          )}
-        </div>
         <p className="market-detail__description">{market.description}</p>
       </header>
 
-      <section className="market-detail__stats">
-        <div>
-          <span className="label">Liquidity</span>
-          <span className="value">{market.totalLiquidity.toLocaleString("en-US")}</span>
+      {/* Simplified stats bar */}
+      <section className="market-detail__stats-bar">
+        <div className="stat-item">
+          <span className="stat-label">Volume</span>
+          <span className="stat-value">{formatVolume(market.totalLiquidity)} FLOW</span>
         </div>
-        <div>
-          <span className="label">Pool token</span>
-          <span className="value">{market.liquidityPool.tokenSymbol}</span>
+        <div className="stat-item">
+          <span className="stat-label">Closes</span>
+          <span className="stat-value">{formatDateTime(market.closeAt)}</span>
         </div>
-        <div>
-          <span className="label">Providers</span>
-          <span className="value">{market.liquidityPool.providerCount}</span>
-        </div>
-        <div>
-          <span className="label">LP fee</span>
-          <span className="value">{market.liquidityPool.feeBps / 100}%</span>
-        </div>
-        <div>
-          <span className="label">Created</span>
-          <span className="value">{formatDateTime(market.createdAt)}</span>
-        </div>
-        <div>
-          <span className="label">Scheduled close</span>
-          <span className="value">{formatDateTime(market.closeAt)}</span>
-        </div>
-        <div>
-          <span className="label">Launch</span>
-          <span className="value">{formatDateTime(market.schedule.scheduledStartAt)}</span>
-        </div>
-        <div>
-          <span className="label">Trading lock</span>
-          <span className="value">{formatDateTime(market.schedule.tradingLockAt)}</span>
-        </div>
-        <div>
-          <span className="label">Freeze window</span>
-          <span className="value">
-            {formatDateTime(market.schedule.freezeWindowStartAt)} —
-            {formatDateTime(market.schedule.freezeWindowEndAt)}
-          </span>
-        </div>
-        <div>
-          <span className="label">Patrol threshold</span>
-          <span className="value">{market.patrolThreshold.toFixed(2)}</span>
+        <div className="stat-item">
+          <span className="stat-label">Category</span>
+          <span className="stat-value">{market.category.toUpperCase()}</span>
         </div>
       </section>
 
