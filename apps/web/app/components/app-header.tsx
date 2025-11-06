@@ -26,6 +26,7 @@ export const AppHeader = () => {
     logIn,
     logOut,
     sessionRoles,
+    sessionToken,
     isAuthenticating,
     sessionError,
   } = useFlowWallet();

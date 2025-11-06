@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2025-11-03T00:47:30.086Z",
+  "updatedAt": "2025-11-06T02:57:42.613Z",
   "markets": [
     {
       "id": "aisports:avg-score:45:1761004177803",
@@ -1415,6 +1415,390 @@
       "yesPrice": 0.5,
       "noPrice": 0.5,
       "lastTradeAt": null
+    },
+    {
+      "id": "aisports:avg-score:45:1762217862348",
+      "title": "Will the average fantasy score exceed 45?",
+      "description": "Current value: 0.0. Data provided by aiSports Escrow",
+      "category": "aiSports_Meta",
+      "type": "yes_no",
+      "resolutionTime": "2025-11-05T00:57:42.348Z",
+      "createdAt": "2025-11-04T00:57:42.348Z",
+      "isActive": true,
+      "isResolved": false,
+      "outcome": null,
+      "oracleConfig": {
+        "dataSource": "aiSports.tournament.averageScore",
+        "targetValue": 45,
+        "comparisonType": "greater_than",
+        "resolutionFunction": "resolveAverageScoreMarket"
+      },
+      "currentData": {
+        "value": 0,
+        "participants": 0,
+        "timeRemaining": "24h",
+        "lastUpdate": "2025-11-04T00:57:42.348Z"
+      },
+      "accessRequirements": {
+        "requiresActiveParticipation": true
+      },
+      "poolState": {
+        "liquidityParameter": 120,
+        "bVector": [
+          0,
+          0
+        ],
+        "outcomeSupply": [
+          0,
+          0
+        ],
+        "totalLiquidity": 0
+      },
+      "tradeVolume": 0,
+      "tradeCount": 0,
+      "yesPrice": 0.5,
+      "noPrice": 0.5,
+      "lastTradeAt": null
+    },
+    {
+      "id": "aisports:community:participants:1762217862476",
+      "title": "Will Total participants exceed 200?",
+      "description": "Current value: 0. Updated every 24 hours",
+      "category": "aiSports_Community",
+      "type": "yes_no",
+      "resolutionTime": "2025-11-05T00:57:42.476Z",
+      "createdAt": "2025-11-04T00:57:42.476Z",
+      "isActive": true,
+      "isResolved": false,
+      "outcome": null,
+      "oracleConfig": {
+        "dataSource": "aiSports.community.participants",
+        "targetValue": 200,
+        "comparisonType": "greater_than",
+        "resolutionFunction": "resolveCommunityMarket"
+      },
+      "currentData": {
+        "value": 0,
+        "participants": 0,
+        "timeRemaining": "24h",
+        "lastUpdate": "2025-11-04T00:57:42.476Z"
+      },
+      "accessRequirements": {},
+      "poolState": {
+        "liquidityParameter": 120,
+        "bVector": [
+          0,
+          0
+        ],
+        "outcomeSupply": [
+          0,
+          0
+        ],
+        "totalLiquidity": 0
+      },
+      "tradeVolume": 0,
+      "tradeCount": 0,
+      "yesPrice": 0.5,
+      "noPrice": 0.5,
+      "lastTradeAt": null
+    },
+    {
+      "id": "aisports:community:prize_pool:1762217862598",
+      "title": "Will Prize pool size exceed 5000?",
+      "description": "Current value: 0. Updated every 24 hours",
+      "category": "aiSports_Community",
+      "type": "yes_no",
+      "resolutionTime": "2025-11-05T00:57:42.598Z",
+      "createdAt": "2025-11-04T00:57:42.598Z",
+      "isActive": true,
+      "isResolved": false,
+      "outcome": null,
+      "oracleConfig": {
+        "dataSource": "aiSports.community.prize_pool",
+        "targetValue": 5000,
+        "comparisonType": "greater_than",
+        "resolutionFunction": "resolveCommunityMarket"
+      },
+      "currentData": {
+        "value": 0,
+        "participants": 0,
+        "timeRemaining": "24h",
+        "lastUpdate": "2025-11-04T00:57:42.598Z"
+      },
+      "accessRequirements": {},
+      "poolState": {
+        "liquidityParameter": 120,
+        "bVector": [
+          0,
+          0
+        ],
+        "outcomeSupply": [
+          0,
+          0
+        ],
+        "totalLiquidity": 0
+      },
+      "tradeVolume": 0,
+      "tradeCount": 0,
+      "yesPrice": 0.5,
+      "noPrice": 0.5,
+      "lastTradeAt": null
+    },
+    {
+      "id": "aisports:avg-score:45:1762307862356",
+      "title": "Will the average fantasy score exceed 45?",
+      "description": "Current value: 0.0. Data provided by aiSports Escrow",
+      "category": "aiSports_Meta",
+      "type": "yes_no",
+      "resolutionTime": "2025-11-06T01:57:42.356Z",
+      "createdAt": "2025-11-05T01:57:42.356Z",
+      "isActive": true,
+      "isResolved": false,
+      "outcome": null,
+      "oracleConfig": {
+        "dataSource": "aiSports.tournament.averageScore",
+        "targetValue": 45,
+        "comparisonType": "greater_than",
+        "resolutionFunction": "resolveAverageScoreMarket"
+      },
+      "currentData": {
+        "value": 0,
+        "participants": 0,
+        "timeRemaining": "24h",
+        "lastUpdate": "2025-11-05T01:57:42.356Z"
+      },
+      "accessRequirements": {
+        "requiresActiveParticipation": true
+      },
+      "poolState": {
+        "liquidityParameter": 120,
+        "bVector": [
+          0,
+          0
+        ],
+        "outcomeSupply": [
+          0,
+          0
+        ],
+        "totalLiquidity": 0
+      },
+      "tradeVolume": 0,
+      "tradeCount": 0,
+      "yesPrice": 0.5,
+      "noPrice": 0.5,
+      "lastTradeAt": null
+    },
+    {
+      "id": "aisports:community:participants:1762307862483",
+      "title": "Will Total participants exceed 200?",
+      "description": "Current value: 0. Updated every 24 hours",
+      "category": "aiSports_Community",
+      "type": "yes_no",
+      "resolutionTime": "2025-11-06T01:57:42.483Z",
+      "createdAt": "2025-11-05T01:57:42.483Z",
+      "isActive": true,
+      "isResolved": false,
+      "outcome": null,
+      "oracleConfig": {
+        "dataSource": "aiSports.community.participants",
+        "targetValue": 200,
+        "comparisonType": "greater_than",
+        "resolutionFunction": "resolveCommunityMarket"
+      },
+      "currentData": {
+        "value": 0,
+        "participants": 0,
+        "timeRemaining": "24h",
+        "lastUpdate": "2025-11-05T01:57:42.483Z"
+      },
+      "accessRequirements": {},
+      "poolState": {
+        "liquidityParameter": 120,
+        "bVector": [
+          0,
+          0
+        ],
+        "outcomeSupply": [
+          0,
+          0
+        ],
+        "totalLiquidity": 0
+      },
+      "tradeVolume": 0,
+      "tradeCount": 0,
+      "yesPrice": 0.5,
+      "noPrice": 0.5,
+      "lastTradeAt": null
+    },
+    {
+      "id": "aisports:community:prize_pool:1762307862610",
+      "title": "Will Prize pool size exceed 5000?",
+      "description": "Current value: 0. Updated every 24 hours",
+      "category": "aiSports_Community",
+      "type": "yes_no",
+      "resolutionTime": "2025-11-06T01:57:42.610Z",
+      "createdAt": "2025-11-05T01:57:42.610Z",
+      "isActive": true,
+      "isResolved": false,
+      "outcome": null,
+      "oracleConfig": {
+        "dataSource": "aiSports.community.prize_pool",
+        "targetValue": 5000,
+        "comparisonType": "greater_than",
+        "resolutionFunction": "resolveCommunityMarket"
+      },
+      "currentData": {
+        "value": 0,
+        "participants": 0,
+        "timeRemaining": "24h",
+        "lastUpdate": "2025-11-05T01:57:42.610Z"
+      },
+      "accessRequirements": {},
+      "poolState": {
+        "liquidityParameter": 120,
+        "bVector": [
+          0,
+          0
+        ],
+        "outcomeSupply": [
+          0,
+          0
+        ],
+        "totalLiquidity": 0
+      },
+      "tradeVolume": 0,
+      "tradeCount": 0,
+      "yesPrice": 0.5,
+      "noPrice": 0.5,
+      "lastTradeAt": null
+    },
+    {
+      "id": "aisports:avg-score:45:1762397862358",
+      "title": "Will the average fantasy score exceed 45?",
+      "description": "Current value: 0.0. Data provided by aiSports Escrow",
+      "category": "aiSports_Meta",
+      "type": "yes_no",
+      "resolutionTime": "2025-11-07T02:57:42.358Z",
+      "createdAt": "2025-11-06T02:57:42.358Z",
+      "isActive": true,
+      "isResolved": false,
+      "outcome": null,
+      "oracleConfig": {
+        "dataSource": "aiSports.tournament.averageScore",
+        "targetValue": 45,
+        "comparisonType": "greater_than",
+        "resolutionFunction": "resolveAverageScoreMarket"
+      },
+      "currentData": {
+        "value": 0,
+        "participants": 0,
+        "timeRemaining": "24h",
+        "lastUpdate": "2025-11-06T02:57:42.358Z"
+      },
+      "accessRequirements": {
+        "requiresActiveParticipation": true
+      },
+      "poolState": {
+        "liquidityParameter": 120,
+        "bVector": [
+          0,
+          0
+        ],
+        "outcomeSupply": [
+          0,
+          0
+        ],
+        "totalLiquidity": 0
+      },
+      "tradeVolume": 0,
+      "tradeCount": 0,
+      "yesPrice": 0.5,
+      "noPrice": 0.5,
+      "lastTradeAt": null
+    },
+    {
+      "id": "aisports:community:participants:1762397862483",
+      "title": "Will Total participants exceed 200?",
+      "description": "Current value: 0. Updated every 24 hours",
+      "category": "aiSports_Community",
+      "type": "yes_no",
+      "resolutionTime": "2025-11-07T02:57:42.483Z",
+      "createdAt": "2025-11-06T02:57:42.483Z",
+      "isActive": true,
+      "isResolved": false,
+      "outcome": null,
+      "oracleConfig": {
+        "dataSource": "aiSports.community.participants",
+        "targetValue": 200,
+        "comparisonType": "greater_than",
+        "resolutionFunction": "resolveCommunityMarket"
+      },
+      "currentData": {
+        "value": 0,
+        "participants": 0,
+        "timeRemaining": "24h",
+        "lastUpdate": "2025-11-06T02:57:42.483Z"
+      },
+      "accessRequirements": {},
+      "poolState": {
+        "liquidityParameter": 120,
+        "bVector": [
+          0,
+          0
+        ],
+        "outcomeSupply": [
+          0,
+          0
+        ],
+        "totalLiquidity": 0
+      },
+      "tradeVolume": 0,
+      "tradeCount": 0,
+      "yesPrice": 0.5,
+      "noPrice": 0.5,
+      "lastTradeAt": null
+    },
+    {
+      "id": "aisports:community:prize_pool:1762397862612",
+      "title": "Will Prize pool size exceed 5000?",
+      "description": "Current value: 0. Updated every 24 hours",
+      "category": "aiSports_Community",
+      "type": "yes_no",
+      "resolutionTime": "2025-11-07T02:57:42.612Z",
+      "createdAt": "2025-11-06T02:57:42.612Z",
+      "isActive": true,
+      "isResolved": false,
+      "outcome": null,
+      "oracleConfig": {
+        "dataSource": "aiSports.community.prize_pool",
+        "targetValue": 5000,
+        "comparisonType": "greater_than",
+        "resolutionFunction": "resolveCommunityMarket"
+      },
+      "currentData": {
+        "value": 0,
+        "participants": 0,
+        "timeRemaining": "24h",
+        "lastUpdate": "2025-11-06T02:57:42.612Z"
+      },
+      "accessRequirements": {},
+      "poolState": {
+        "liquidityParameter": 120,
+        "bVector": [
+          0,
+          0
+        ],
+        "outcomeSupply": [
+          0,
+          0
+        ],
+        "totalLiquidity": 0
+      },
+      "tradeVolume": 0,
+      "tradeCount": 0,
+      "yesPrice": 0.5,
+      "noPrice": 0.5,
+      "lastTradeAt": null
     }
   ],
   "trades": {
@@ -1466,6 +1850,15 @@
     "aisports:community:prize_pool:1762040850097": [],
     "aisports:avg-score:45:1762130849824": [],
     "aisports:community:participants:1762130849955": [],
-    "aisports:community:prize_pool:1762130850086": []
+    "aisports:community:prize_pool:1762130850086": [],
+    "aisports:avg-score:45:1762217862348": [],
+    "aisports:community:participants:1762217862476": [],
+    "aisports:community:prize_pool:1762217862598": [],
+    "aisports:avg-score:45:1762307862356": [],
+    "aisports:community:participants:1762307862483": [],
+    "aisports:community:prize_pool:1762307862610": [],
+    "aisports:avg-score:45:1762397862358": [],
+    "aisports:community:participants:1762397862483": [],
+    "aisports:community:prize_pool:1762397862612": []
   }
 }
