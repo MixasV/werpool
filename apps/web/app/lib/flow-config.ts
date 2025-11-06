@@ -17,12 +17,14 @@ export const initFlowConfig = (): void => {
     contracts,
   } = resolveFlowConfig();
 
-  // CRITICAL: Only set valid string values - FCL may be reading icon file as binary
+  // CRITICAL: FCL wallet metadata configuration
+  // app.detail.icon must be publicly accessible URL
+  // Recommended: 192x192px PNG for best wallet UI display
   const config: Record<string, string> = {
     "app.detail.title": appTitle || "Werpool - Flow Prediction Markets",
+    "app.detail.icon": appIcon || "https://werpool.mixas.pro/favicon/web-app-manifest-192x192.png",
     "app.detail.description": "Prediction markets on Flow blockchain where your forecast becomes an on-chain asset",
     "app.detail.url": "https://werpool.mixas.pro",
-    "app.detail.icon": appIcon || "https://werpool.mixas.pro/favicon/favicon-96x96.png",
     "accessNode.api": accessNode,
     "discovery.wallet": discoveryWallet,
     "0xCoreMarketHub": contracts.coreMarketHub,
